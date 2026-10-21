@@ -24,7 +24,9 @@ enum Content {
     var height: CGFloat {
         switch self {
         case .player: return 168
-        case .message(let m): return m.body == nil ? 60 : 82
+        case .message(let m):
+            if m.plain == true { return m.body == nil ? 42 : 56 }
+            return m.body == nil ? 50 : 70
         case .inbox(let height), .calendar(let height), .agents(let height): return height
         case .home: return HomeLayout.height
         }
@@ -143,7 +145,7 @@ struct MessageView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            MessageIcon(message: message)
+            if message.plain != true { MessageIcon(message: message) }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(message.title)
@@ -170,6 +172,11 @@ struct MessageView: View {
                             .font(.system(size: 12.5))
                             .foregroundStyle(.white.opacity(0.5))
                             .lineLimit(1)
+                    } else if message.plain == true {
+                        Text(body)
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundStyle(message.color == nil ? .white.opacity(0.6) : message.tint)
+                            .lineLimit(1)
                     } else {
                         Text(body)
                             .font(.system(size: 12.5))
@@ -182,8 +189,8 @@ struct MessageView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 22)
-        .padding(.top, 6)
-        .padding(.bottom, 14)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
     }
 
 }

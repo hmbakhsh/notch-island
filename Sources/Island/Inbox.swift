@@ -92,12 +92,15 @@ struct WaitingThread: Codable, Identifiable, Hashable {
         }
     }
 
-    /// "Finished in 1m 6s · Opus 5.5"
+    /// "Finished in 1m 6s with Opus 5.5", "Failed after 2m with Sonnet 5.5"
     var status: String {
-        var parts = [summary]
-        if reason == "finished" || reason == "failed", let d = duration { parts[0] += " in \(d)" }
-        if let m = prettyModel(model) { parts.append(m) }
-        return parts.joined(separator: " · ")
+        var text = summary
+        if let d = duration {
+            if reason == "finished" { text += " in \(d)" }
+            if reason == "failed" { text += " after \(d)" }
+        }
+        if !needsInput, let m = prettyModel(model) { text += " with \(m)" }
+        return text
     }
 
     private var duration: String? {
@@ -114,8 +117,11 @@ struct WaitingThread: Codable, Identifiable, Hashable {
     var message: Message {
         var m = Message(title: title)
         m.body = status
-        m.source = project.isEmpty || project == "No project" ? "T3" : project
-        m.image = t3AppURL.map { "app:" + $0.path }
+        m.source = project.isEmpty || project == "No project" ? nil : project
+        m.plain = true
+        // Banners show no icon; lists use this one.
+        m.icon = reason == "finished" ? "checkmark.circle.fill" : reason == "failed" ? "xmark.octagon.fill" : "questionmark.bubble.fill"
+        m.color = reason == "finished" ? "green" : reason == "failed" ? "red" : "orange"
         m.open = T3.threadLink(id)?.absoluteString
         m.seconds = 8
         if reason == "question" || reason == "approval" { m.sound = "Glass" }

@@ -33,6 +33,7 @@ let usage = """
       -c, --color COLOR     icon tint: red orange yellow green mint teal blue indigo purple pink gray, or #RRGGBB
       -t, --time SECONDS    how long it stays (default 5)
           --sticky          stay until clicked
+          --plain           no icon; the body is tinted with --color instead
       -o, --open URL|PATH   open this on click
       -r, --run COMMAND     run this shell command on click
           --sound NAME      play a system sound, e.g. Glass, Ping, Submarine

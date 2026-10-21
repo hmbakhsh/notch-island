@@ -156,6 +156,7 @@ notch TITLE [BODY] [options]
 | `-c, --color COLOR` | `red orange yellow green mint teal blue indigo purple pink gray` or `#RRGGBB` |
 | `-t, --time SECONDS` | How long it stays (default 5) |
 | `--sticky` | Stay until clicked or dismissed |
+| `--plain` | No icon; the body is tinted with `--color` instead |
 | `-o, --open URL\|PATH` | Open on click |
 | `-r, --run COMMAND` | Run a shell command on click |
 | `--sound NAME` | System sound: `Glass`, `Ping`, `Submarine`, … |

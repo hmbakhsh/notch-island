@@ -27,6 +27,8 @@ struct Message: Codable {
     /// Set for notifications mirrored from another app (its bundle id), so
     /// bursts from the same app can be merged.
     var mirroredFrom: String?
+    /// No icon: just the text, with the body tinted by `color`.
+    var plain: Bool?
     var mergedCount: Int?
 
     var tint: Color {
@@ -137,6 +139,7 @@ enum Notify {
                 guard let t = Double(value()) else { fail("--time takes seconds") }
                 message.seconds = t
             case "--sticky": message.seconds = 0
+            case "--plain": message.plain = true
             case "-o", "--open": message.open = value()
             case "-r", "--run": message.run = value()
             case "--sound": message.sound = value()
