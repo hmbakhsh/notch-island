@@ -6,6 +6,7 @@ enum Content {
     case message(Message)
     case inbox(height: CGFloat)
     case calendar(height: CGFloat)
+    case agents(height: CGFloat)
     case home
 
     /// Identity for cross-fading between kinds of content.
@@ -15,6 +16,7 @@ enum Content {
         case .message(let m): return "message:" + m.title + (m.body ?? "")
         case .inbox: return "inbox"
         case .calendar: return "calendar"
+        case .agents: return "agents"
         case .home: return "home"
         }
     }
@@ -23,7 +25,7 @@ enum Content {
         switch self {
         case .player: return 168
         case .message(let m): return m.body == nil ? 60 : 82
-        case .inbox(let height), .calendar(let height): return height
+        case .inbox(let height), .calendar(let height), .agents(let height): return height
         case .home: return HomeLayout.height
         }
     }
@@ -37,6 +39,11 @@ final class IslandState: ObservableObject {
     @Published var content = Content.player
     /// Opened from the keyboard: number keys act on the overview's tiles.
     @Published var keyboard = false
+    /// Agents working or waiting: shown as wings beside the notch while closed.
+    @Published var live: LiveCounts?
+
+    var liveHeight: CGFloat { max(notch.height, LiveLayout.minHeight) }
+    var liveWidth: CGFloat { notch.width + LiveLayout.wing * 2 }
     /// The notch (or, on screens without one, a sliver at the top centre).
     @Published var notch = CGSize(width: 200, height: 0)
 }
@@ -56,13 +63,16 @@ struct IslandView: View {
     let onOpenEntry: (Entry) -> Void
     let onOpenURL: (URL) -> Void
     let onOpenPanel: (Island.Panel) -> Void
+    let onOpenT3: () -> Void
 
     var body: some View {
         let radius: CGFloat = state.open ? 30 : 10
         let shape = UnevenRoundedRectangle(
             bottomLeadingRadius: radius, bottomTrailingRadius: radius, style: .continuous)
-        let width = state.open ? islandWidth : state.notch.width
-        let height = state.notch.height + (state.open ? state.content.height : 0)
+        let compact = !state.open && state.live != nil
+        let width = state.open ? islandWidth : compact ? state.liveWidth : state.notch.width
+        let height = state.open ? state.notch.height + state.content.height
+            : compact ? state.liveHeight : state.notch.height
         ZStack(alignment: .top) {
             shape
                 .fill(Color.black)
@@ -84,6 +94,14 @@ struct IslandView: View {
             .frame(width: width, height: height, alignment: .top)
             .clipShape(shape)
             .opacity(state.showContent ? 1 : 0)
+
+            if compact, let live = state.live {
+                LiveWings(counts: live, notchWidth: state.notch.width)
+                    .frame(width: width, height: height)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onOpenPanel(.agents) }
+                    .transition(.opacity)
+            }
         }
         // Pinned to the top so resizing the window never moves anything.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -102,6 +120,8 @@ struct IslandView: View {
             InboxView(history: history, watcher: watcher, onOpenThread: onOpenThread, onOpenEntry: onOpenEntry)
         case .calendar:
             AgendaView(agenda: agenda, onOpen: onOpenURL)
+        case .agents:
+            AgentsView(watcher: watcher, onOpen: onOpenT3)
         case .home:
             HomeView(
                 agenda: agenda, player: player, watcher: watcher, history: history,

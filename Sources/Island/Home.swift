@@ -22,8 +22,8 @@ struct HomeView: View {
             Tile(icon: "calendar", label: nextEvent?.isNow == true ? "Now" : "Next", key: keyboard ? 1 : nil) { open(.calendar) } content: {
                 calendar
             }
-            Tile(icon: "tray.full.fill", label: "Inbox", key: keyboard ? 2 : nil) { open(.inbox) } content: {
-                inbox
+            Tile(icon: "sparkles", label: "Agents", key: keyboard ? 2 : nil) { open(.agents) } content: {
+                agents
             }
             Tile(icon: "music.note", label: "Spotify", key: keyboard ? 3 : nil) { open(.player) } content: {
                 spotify
@@ -55,21 +55,24 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder private var inbox: some View {
-        if !watcher.waiting.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("\(watcher.waiting.count)")
-                    .font(.system(size: 24, weight: .bold).monospacedDigit())
-                    .foregroundStyle(Color.orange)
-                secondary(watcher.waiting.count == 1 ? "thread waiting" : "threads waiting")
-            }
-        } else if let latest = history.entries.first {
-            VStack(alignment: .leading, spacing: 2) {
-                primary(latest.message.title)
-                secondary(latest.message.source ?? "Latest")
-            }
+    @ViewBuilder private var agents: some View {
+        let needs = watcher.waiting.filter { $0.needsInput || $0.reason == "failed" }.count
+        if watcher.running.isEmpty && watcher.waiting.isEmpty {
+            primary("No agents running")
         } else {
-            primary("All clear")
+            VStack(alignment: .leading, spacing: 3) {
+                if !watcher.running.isEmpty {
+                    HStack(spacing: 6) {
+                        Spinner(size: 12)
+                        primary("\(watcher.running.count) working", lines: 1)
+                    }
+                }
+                if needs > 0 {
+                    secondary("\(needs) need\(needs == 1 ? "s" : "") you", color: .orange)
+                } else if !watcher.waiting.isEmpty {
+                    secondary("\(watcher.waiting.count) done", color: .green)
+                }
+            }
         }
     }
 

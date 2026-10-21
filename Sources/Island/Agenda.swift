@@ -148,6 +148,9 @@ private extension EKEvent {
 struct Config: Decodable {
     var calendars: [String]?
     var capsLockTrigger: Bool?
+    /// Banners when T3 threads finish or need you (the live indicator shows
+    /// the same thing, so this is off by default).
+    var t3Banners: Bool?
 
     static let shared: Config = {
         let url = FileManager.default.homeDirectoryForCurrentUser

@@ -63,7 +63,7 @@ struct WaitingThread: Codable, Identifiable, Hashable {
     let id: String
     let title: String
     let project: String
-    /// question | approval | failed | finished
+    /// running | question | approval | failed | finished
     let reason: String
     let since: String
     /// When the user last had this thread open in T3.
@@ -71,9 +71,12 @@ struct WaitingThread: Codable, Identifiable, Hashable {
     let model: String
     let started: String
 
+    var running: Bool { reason == "running" }
+    var needsInput: Bool { reason == "question" || reason == "approval" }
+
     /// Unread in T3's sense: asking something, or finished since last opened.
     var waiting: Bool {
-        reason == "question" || reason == "approval" || since > visited
+        needsInput || ((reason == "finished" || reason == "failed") && since > visited)
     }
 
     var summary: String {
@@ -81,6 +84,7 @@ struct WaitingThread: Codable, Identifiable, Hashable {
         case "question": return "Asked you a question"
         case "approval": return "Waiting for approval"
         case "failed": return "Failed"
+        case "running": return "Working"
         default: return "Finished"
         }
     }
@@ -123,7 +127,13 @@ let t3AppURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.t
 /// so this reads its internal tables read-only; if a T3 update changes the
 /// schema the query fails and the watcher just reports nothing.
 final class T3Watcher: ObservableObject {
+    /// Needs you: a question, an approval, or finished/failed since you looked.
     @Published private(set) var waiting: [WaitingThread] = []
+    /// Working right now.
+    @Published private(set) var running: [WaitingThread] = []
+    /// Banners for threads that finish or need you; off by default since the
+    /// live indicator and agents panel show the same thing.
+    var announces = false
     var onNew: ((WaitingThread) -> Void)?
     var onChange: (() -> Void)?
     private var seen: Set<String>?
@@ -143,9 +153,10 @@ final class T3Watcher: ObservableObject {
         select t.thread_id id, t.title, coalesce(p.title, '') project,
           case when q.thread_id is not null then 'question'
                when l.status = 'waiting' then 'approval'
+               when l.status in ('queued', 'preparing', 'starting', 'running') then 'running'
                when l.status = 'failed' then 'failed'
                else 'finished' end reason,
-          coalesce(q.since, l.completed_at, t.updated_at) since,
+          coalesce(q.since, l.completed_at, json_extract(l.payload_json, '$.startedAt'), t.updated_at) since,
           coalesce(json_extract(t.payload_json, '$.lastVisitedAt'), '') visited,
           coalesce(json_extract(l.payload_json, '$.modelSelection.model'), '') model,
           coalesce(json_extract(l.payload_json, '$.startedAt'), '') started
@@ -157,7 +168,7 @@ final class T3Watcher: ObservableObject {
           and json_extract(t.payload_json, '$.settledAt') is null
           and json_extract(t.payload_json, '$.lineage.parentThreadId') is null
           and coalesce(json_extract(t.payload_json, '$.snoozedUntil'), '') < strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-          and (q.thread_id is not null or l.status = 'waiting'
+          and (q.thread_id is not null or l.status in ('waiting', 'queued', 'preparing', 'starting', 'running')
                or (l.status in ('completed', 'failed')
                    and (l.completed_at > coalesce(json_extract(t.payload_json, '$.lastVisitedAt'), '')
                         or l.completed_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-5 minutes'))))
@@ -166,7 +177,7 @@ final class T3Watcher: ObservableObject {
 
     func start() {
         poll()
-        timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in self?.poll() }
+        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.poll() }
     }
 
     private func poll() {
@@ -191,11 +202,14 @@ final class T3Watcher: ObservableObject {
             // settles; wait for that before deciding whether you saw it.
             guard secondsBetween(row.since, now) >= 5 else { continue }
             seen!.insert(row.key)
+            guard announces, !row.running else { continue }
             if !(t3IsFrontmost && row.visited >= row.since) { onNew?(row) }
         }
-        let threads = rows.filter(\.waiting)
-        if threads != waiting {
-            waiting = threads
+        let needs = rows.filter(\.waiting)
+        let working = rows.filter(\.running)
+        if needs != waiting || working != running {
+            waiting = needs
+            running = working
             onChange?()
         }
     }
@@ -316,7 +330,7 @@ private struct Row: View {
 }
 
 /// claude-opus-5-5 → Opus 5.5, gpt-6.1-sol → GPT-6.1 Sol
-private func prettyModel(_ id: String) -> String? {
+func prettyModel(_ id: String) -> String? {
     guard !id.isEmpty else { return nil }
     var parts = id.split(separator: "-").map(String.init)
     if parts.first == "claude" {
@@ -342,7 +356,7 @@ private func secondsBetween(_ a: String, _ b: String) -> Double {
     isoDate(b).timeIntervalSince(isoDate(a))
 }
 
-private func isoDate(_ s: String) -> Date {
+func isoDate(_ s: String) -> Date {
     let f = ISO8601DateFormatter()
     f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return f.date(from: s) ?? ISO8601DateFormatter().date(from: s) ?? Date()

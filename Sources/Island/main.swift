@@ -16,6 +16,7 @@ let usage = """
            notch --spotify                                 open/close the Spotify player
            notch --calendar                                open/close upcoming calendar events
            notch --home                                    open/close the overview (bind it to any key)
+           notch --agents                                  open/close the live list of T3 agents
 
     History is kept in ~/.local/state/notch/history.jsonl (one JSON entry per line).
 

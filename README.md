@@ -21,10 +21,14 @@ inbox later.
 optional second line and a small source label. Banners queue, hide after 5
 seconds, pause while hovered, and can open a URL or run a command when clicked.
 
-**T3 Code threads that need you.** If T3 Code is installed,
-Island watches it and announces each thread that finishes, fails, asks a
-question or waits for approval, with the model and how long the turn took. It
-stays quiet when you're already looking at that thread in T3.
+**Live agent status.** If T3 Code is installed, Island shows what your agents
+are doing as it happens. While any thread is working or waiting on you, the
+notch grows small wings: a spinner with how many are working on the left, and
+how many need you (orange) or have finished unread (green) on the right. Click
+or hover them for the full list, with each thread's state, project, model and
+running time. (`notch --agents` opens the list directly. Banners for finished
+threads are off by default; set `"t3Banners": true` in the config to get them
+too.)
 
 <p align="center">
   <img src="docs/screenshots/t3-finished.png" width="428" alt="T3 thread finished banner">
@@ -52,7 +56,7 @@ out-of-office events are hidden. Open it with `notch --calendar`, e.g. from a
 status bar item.
 
 **Hover the notch** (or press Caps Lock, see below) for an overview: your next
-event (with Join), the inbox and Spotify, side by side. Click a tile to open
+event (with Join), your agents and Spotify, side by side. Click a tile to open
 it; move away to close.
 
 On a Mac with a notch the island grows out of it; on other screens it grows out
@@ -91,8 +95,7 @@ needs no Accessibility permission; other key remaps are kept. If you've set
 Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Island
 follows that too when it's a right-side modifier (built-in keyboards don't
 have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. While it's open
-from Caps Lock, **1** joins your next call (or opens the calendar), **2** brings
-T3 forward when threads are waiting (or opens the inbox), and **3** plays or
+from Caps Lock, **1** joins your next call (or opens the calendar), **2** opens the agents list, and **3** plays or
 pauses Spotify; hold Caps Lock and press the number, or tap one then the other.
 The number keys are only taken while the overview is open. **Esc** closes the
 overview or any panel (banners leave Esc to the app you're typing in). To use a different
@@ -123,6 +126,7 @@ notch TITLE [BODY] [options]
 | `--spotify` | Open or close the Spotify panel |
 | `--calendar` | Open or close upcoming calendar events |
 | `--home` | Open or close the overview |
+| `--agents` | Open or close the live list of T3 agents |
 
 From a program, `--json` is easiest:
 

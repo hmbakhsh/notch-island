@@ -60,7 +60,11 @@ final class Island {
                 NSWorkspace.shared.open(url)
                 self?.close()
             },
-            onOpenPanel: { [weak self] panel in self?.toggle(panel) }))
+            onOpenPanel: { [weak self] panel in self?.toggle(panel) },
+            onOpenT3: { [weak self] in
+                if let url = t3AppURL { NSWorkspace.shared.open(url) }
+                self?.close()
+            }))
         // The island sizes the window itself; don't let SwiftUI resize it too.
         host.sizingOptions = []
         panel.contentView = host
@@ -89,10 +93,17 @@ final class Island {
             self.close()
         }
         watcher.onNew = { [weak self] thread in self?.deliver(thread.message) }
-        watcher.onChange = { [weak self] in self?.updateBar() }
+        watcher.announces = Config.shared.t3Banners == true
+        watcher.onChange = { [weak self] in
+            self?.updateBar()
+            self?.updateLive()
+        }
         watcher.start()
         center.addObserver(forName: homeName, object: nil, queue: .main) { [weak self] _ in
             self?.toggle(.home)
+        }
+        center.addObserver(forName: agentsName, object: nil, queue: .main) { [weak self] _ in
+            self?.toggle(.agents)
         }
         if Config.shared.capsLockTrigger == true {
             Trigger.install { [weak self] in self?.toggle(.home) }
@@ -106,7 +117,7 @@ final class Island {
 
     // MARK: Panels opened from the bar
 
-    enum Panel { case player, inbox, calendar, home }
+    enum Panel { case player, inbox, calendar, agents, home }
 
     private var openPanel: Panel? {
         guard state.open else { return nil }
@@ -114,6 +125,7 @@ final class Island {
         case .player: return .player
         case .inbox: return .inbox
         case .calendar: return .calendar
+        case .agents: return .agents
         case .home: return .home
         case .message: return nil
         }
@@ -164,6 +176,8 @@ final class Island {
                 guard let self else { return }
                 done(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
             }
+        case .agents:
+            done(.agents(height: AgentsView.height(watcher)))
         case .home:
             agenda.reloadIfAllowed()
             player.refresh()
@@ -174,8 +188,7 @@ final class Island {
         }
     }
 
-    /// 1: join the next call, or open the calendar. 2: bring T3 forward if
-    /// threads are waiting, or open the inbox. 3: play/pause.
+    /// 1: join the next call, or open the calendar. 2: agents. 3: play/pause.
     private func pressNumber(_ n: Int) {
         guard case .home = state.content, state.open else { return }
         switch n {
@@ -187,12 +200,7 @@ final class Island {
                 toggle(.calendar)
             }
         case 2:
-            if !watcher.waiting.isEmpty, let t3 = t3AppURL {
-                NSWorkspace.shared.open(t3)
-                close()
-            } else {
-                toggle(.inbox)
-            }
+            toggle(.agents)
         case 3:
             player.send("playpause")
         default:
@@ -250,8 +258,12 @@ final class Island {
     /// The notch itself, or a strip at the top centre of screens without one.
     private func hotZone(on screen: NSScreen) -> NSRect {
         let notch = notchSize(of: screen)
-        let width = notch.height > 0 ? notch.width : 200
-        let height = max(notch.height, 4)
+        var width = notch.height > 0 ? notch.width : 200
+        var height = max(notch.height, 4)
+        if state.live != nil, panel.isVisible, panel.screen == screen {
+            width = state.liveWidth
+            height = state.liveHeight
+        }
         return NSRect(x: screen.frame.midX - width / 2, y: screen.frame.maxY - height, width: width, height: height + 1)
     }
 
@@ -396,8 +408,8 @@ final class Island {
         withAnimation(.spring(response: 0.28 * slowmo, dampingFraction: 1)) { state.open = false }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.32 * slowmo) { [weak self] in
             guard let self, !self.state.open else { return }
-            self.panel.orderOut(nil)
             self.busy = false
+            if self.state.live != nil { self.showLive() } else { self.panel.orderOut(nil) }
             if let panel = self.requested {
                 self.requested = nil
                 self.show(panel)
@@ -406,6 +418,40 @@ final class Island {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.showNext() }
             }
         }
+    }
+
+    // MARK: Live indicator
+
+    /// Shows, updates or hides the wings beside the notch as agents start,
+    /// wait and finish. While a panel or banner is up, close() settles it.
+    private func updateLive() {
+        let needs = watcher.waiting.filter { $0.needsInput || $0.reason == "failed" }.count
+        let done = watcher.waiting.count - needs
+        let counts = watcher.running.isEmpty && watcher.waiting.isEmpty
+            ? nil : LiveCounts(running: watcher.running.count, needs: needs, done: done)
+        guard counts != state.live else { return }
+        let appearing = state.live == nil
+        if !busy, appearing, counts != nil { showLive() }
+        withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.82)) { state.live = counts }
+        if !busy, counts == nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35 * slowmo) { [weak self] in
+                guard let self, !self.busy, self.state.live == nil else { return }
+                self.panel.orderOut(nil)
+            }
+        }
+    }
+
+    /// Parks the closed island on the notch screen, sized to the wings.
+    private func showLive() {
+        guard let screen = NSScreen.screens.first(where: { $0.auxiliaryTopLeftArea != nil }) ?? NSScreen.main
+        else { return }
+        state.notch = notchSize(of: screen)
+        let width = state.liveWidth
+        let height = state.liveHeight
+        panel.setFrame(
+            NSRect(x: screen.frame.midX - width / 2, y: screen.frame.maxY - height, width: width, height: height),
+            display: true)
+        panel.orderFrontRegardless()
     }
 
     /// The notch's size, or a zero-height sliver on screens without one so the
