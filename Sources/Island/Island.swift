@@ -97,7 +97,7 @@ final class Island {
             self.close()
         }
         watcher.onNew = { [weak self] thread in self?.deliver(thread.message) }
-        watcher.announces = Config.shared.t3Banners == true
+        watcher.announces = Config.shared.t3Banners != false
         watcher.onChange = { [weak self] in
             self?.updateBar()
             self?.updateLive()

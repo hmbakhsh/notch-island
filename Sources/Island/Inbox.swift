@@ -74,6 +74,9 @@ struct WaitingThread: Codable, Identifiable, Hashable {
     var running: Bool { reason == "running" }
     var needsInput: Bool { reason == "question" || reason == "approval" }
 
+    /// Finished since you last opened it.
+    var unread: Bool { since > visited }
+
     /// Unread in T3's sense: asking something, or finished since last opened.
     var waiting: Bool {
         needsInput || ((reason == "finished" || reason == "failed") && since > visited)
@@ -168,6 +171,8 @@ final class T3Watcher: ObservableObject {
     @Published private(set) var waiting: [WaitingThread] = []
     /// Working right now.
     @Published private(set) var running: [WaitingThread] = []
+    /// Finished or failed in the last 12 hours, read or not, newest first.
+    @Published private(set) var completed: [WaitingThread] = []
     /// Banners for threads that finish or need you; off by default since the
     /// live indicator and agents panel show the same thing.
     var announces = false
@@ -208,7 +213,7 @@ final class T3Watcher: ObservableObject {
           and (q.thread_id is not null or l.status in ('waiting', 'queued', 'preparing', 'starting', 'running')
                or (l.status in ('completed', 'failed')
                    and (l.completed_at > coalesce(json_extract(t.payload_json, '$.lastVisitedAt'), '')
-                        or l.completed_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-5 minutes'))))
+                        or l.completed_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-12 hours'))))
         order by since desc;
         """
 
@@ -244,9 +249,11 @@ final class T3Watcher: ObservableObject {
         }
         let needs = rows.filter(\.waiting)
         let working = rows.filter(\.running)
-        if needs != waiting || working != running {
+        let done = rows.filter { $0.reason == "finished" || $0.reason == "failed" }
+        if needs != waiting || working != running || done != completed {
             waiting = needs
             running = working
+            completed = done
             onChange?()
         }
     }

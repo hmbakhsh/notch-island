@@ -165,8 +165,7 @@ private extension EKEvent {
 struct Config: Decodable {
     var calendars: [CalendarConfig]?
     var capsLockTrigger: Bool?
-    /// Banners when T3 threads finish or need you (the live indicator shows
-    /// the same thing, so this is off by default).
+    /// Banners when T3 threads finish, fail or need you (default on).
     var t3Banners: Bool?
     /// Bundle ids whose macOS notifications show in the island, e.g.
     /// ["com.tinyspeck.slackmacgap"]. Needs Full Disk Access.

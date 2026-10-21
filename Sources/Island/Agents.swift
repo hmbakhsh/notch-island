@@ -120,7 +120,10 @@ struct AgentsView: View {
     /// Needs you, then working, then done; capped at maxRows overall.
     static func groups(_ watcher: T3Watcher) -> [(title: String, threads: [WaitingThread])] {
         let needs = watcher.waiting.filter { $0.needsInput || $0.reason == "failed" }
-        let done = watcher.waiting.filter { $0.reason == "finished" }
+        // Everything that finished recently, unread first, as a checklist.
+        let done = watcher.completed
+            .filter { !needs.contains($0) }
+            .sorted { ($0.unread ? 1 : 0, $0.since) > ($1.unread ? 1 : 0, $1.since) }
         var left = AgentsLayout.maxRows
         var out: [(String, [WaitingThread])] = []
         for (title, list) in [("Needs you", needs), ("Working", watcher.running), ("Done", done)] where !list.isEmpty && left > 0 {
@@ -154,7 +157,7 @@ private struct AgentRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(thread.title)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.white.opacity(seen ? 0.55 : 1))
                     Text(detail(at: context.date))
                         .font(.system(size: 11.5))
                         .foregroundStyle(.white.opacity(0.5))
@@ -173,13 +176,21 @@ private struct AgentRow: View {
         }
     }
 
+    /// A finished thread you've already opened: shown checked off.
+    private var seen: Bool { thread.reason == "finished" && !thread.unread }
+
     @ViewBuilder private var glyph: some View {
         switch thread.reason {
         case "running": Spinner(size: 13)
         case "question": icon("questionmark.bubble.fill", .orange)
         case "approval": icon("hand.raised.fill", .orange)
         case "failed": icon("xmark.octagon.fill", .red)
-        default: icon("checkmark.circle.fill", .green)
+        default:
+            if thread.unread {
+                icon("checkmark.circle.fill", .green)
+            } else {
+                icon("checkmark.circle", .white.opacity(0.35))
+            }
         }
     }
 
