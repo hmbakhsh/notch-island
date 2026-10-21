@@ -113,7 +113,7 @@ struct WaitingThread: Codable, Identifiable, Hashable {
         m.body = status
         m.source = project.isEmpty || project == "No project" ? "T3" : project
         m.image = t3AppURL.map { "app:" + $0.path }
-        m.open = t3AppURL?.path
+        m.open = T3.threadLink(id)?.absoluteString
         m.seconds = 8
         if reason == "question" || reason == "approval" { m.sound = "Glass" }
         return m
@@ -122,6 +122,43 @@ struct WaitingThread: Codable, Identifiable, Hashable {
 
 /// Whichever T3 Code build is installed (stable, Alpha and Nightly share an id).
 let t3AppURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.t3tools.t3code")
+
+enum T3 {
+    private static let bundleID = "com.t3tools.t3code"
+
+    /// The copy that's running, so links don't launch a different build.
+    static var appURL: URL? {
+        NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first?.bundleURL ?? t3AppURL
+    }
+
+    /// t3code://threads/<environment>/<thread>, T3's own link to a thread.
+    static func threadLink(_ threadID: String) -> URL? {
+        let file = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".t3/userdata/environment-id")
+        guard let environment = try? String(contentsOf: file, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines), !environment.isEmpty
+        else { return nil }
+        let allowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))
+        guard let env = environment.addingPercentEncoding(withAllowedCharacters: allowed),
+              let thread = threadID.addingPercentEncoding(withAllowedCharacters: allowed)
+        else { return nil }
+        return URL(string: "t3code://threads/\(env)/\(thread)")
+    }
+
+    /// Opens a thread in T3, or just brings T3 forward if there's no link.
+    static func open(thread threadID: String?) {
+        guard let app = appURL else { return }
+        if let threadID, let link = threadLink(threadID) {
+            open(link: link)
+        } else {
+            NSWorkspace.shared.open(app)
+        }
+    }
+
+    static func open(link: URL) {
+        guard let app = appURL else { return }
+        NSWorkspace.shared.open([link], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
+    }
+}
 
 /// Polls T3's local state database. T3 has no public hook for thread status,
 /// so this reads its internal tables read-only; if a T3 update changes the
@@ -252,7 +289,7 @@ enum InboxLayout {
 struct InboxView: View {
     @ObservedObject var history: History
     @ObservedObject var watcher: T3Watcher
-    let onOpenThread: () -> Void
+    let onOpenThread: (String) -> Void
     let onOpenEntry: (Entry) -> Void
 
     var body: some View {
@@ -265,7 +302,7 @@ struct InboxView: View {
                         title: thread.title,
                         detail: thread.status,
                         time: relative(isoDate(thread.since)),
-                        action: onOpenThread)
+                        action: { onOpenThread(thread.id) })
                 }
                 Spacer().frame(height: 6)
             }

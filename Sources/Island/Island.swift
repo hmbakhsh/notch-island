@@ -35,6 +35,8 @@ final class Island {
     private var hoverLeftAt: Date?
     /// Opened from the keyboard, so moving the mouse doesn't close it.
     private var homePinned = false
+    /// The next panel was opened from the keyboard and should take ↑ ↓ ⏎.
+    private var pendingListKeys = false
 
     init() {
         panel = IslandPanel(
@@ -48,8 +50,8 @@ final class Island {
             state: state, player: player, history: history, watcher: watcher, agenda: agenda,
             onMessageTap: { [weak self] in self?.tapMessage() },
             onMessageHover: { [weak self] inside in self?.hoverMessage(inside) },
-            onOpenThread: { [weak self] in
-                if let url = t3AppURL { NSWorkspace.shared.open(url) }
+            onOpenThread: { [weak self] id in
+                T3.open(thread: id)
                 self?.close()
             },
             onOpenEntry: { [weak self] entry in
@@ -61,8 +63,8 @@ final class Island {
                 self?.close()
             },
             onOpenPanel: { [weak self] panel in self?.toggle(panel) },
-            onOpenT3: { [weak self] in
-                if let url = t3AppURL { NSWorkspace.shared.open(url) }
+            onOpenAgent: { [weak self] id in
+                T3.open(thread: id)
                 self?.close()
             }))
         // The island sizes the window itself; don't let SwiftUI resize it too.
@@ -103,7 +105,7 @@ final class Island {
             self?.toggle(.home)
         }
         center.addObserver(forName: agentsName, object: nil, queue: .main) { [weak self] _ in
-            self?.toggle(.agents)
+            self?.toggle(.agents, keyboard: true)
         }
         if Config.shared.capsLockTrigger == true {
             Trigger.install { [weak self] in self?.toggle(.home) }
@@ -131,7 +133,9 @@ final class Island {
         }
     }
 
-    private func toggle(_ panel: Panel) {
+    /// keyboard: opened by a key, so the panel takes its list keys (↑ ↓ ⏎).
+    private func toggle(_ panel: Panel, keyboard: Bool = false) {
+        pendingListKeys = keyboard && panel == .agents
         if openPanel == panel || (panel == .home && openPanel != nil) {
             // The trigger key closes whatever panel is open.
             close()
@@ -163,6 +167,10 @@ final class Island {
     /// Loads what a panel needs, then hands back its content. Calendar waits
     /// for the permission prompt the first time.
     private func content(for panel: Panel, _ done: @escaping (Content) -> Void) {
+        if panel != .agents {
+            Trigger.captureList(nil)
+            state.selectedThread = nil
+        }
         switch panel {
         case .player:
             player.refresh()
@@ -177,6 +185,13 @@ final class Island {
                 done(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
             }
         case .agents:
+            if pendingListKeys {
+                pendingListKeys = false
+                state.selectedThread = AgentsView.order(watcher).first
+                Trigger.captureList { [weak self] key in self?.pressListKey(key) }
+            } else {
+                state.selectedThread = nil
+            }
             done(.agents(height: AgentsView.height(watcher)))
         case .home:
             agenda.reloadIfAllowed()
@@ -185,6 +200,21 @@ final class Island {
             state.keyboard = Config.shared.capsLockTrigger == true
             if state.keyboard { Trigger.captureNumbers { [weak self] n in self?.pressNumber(n) } }
             done(.home)
+        }
+    }
+
+    /// ↑ ↓ move through the agents list; ⏎ opens the highlighted thread.
+    private func pressListKey(_ key: Trigger.ListKey) {
+        guard case .agents = state.content, state.open else { return }
+        let order = AgentsView.order(watcher)
+        guard !order.isEmpty else { return }
+        let index = state.selectedThread.flatMap { order.firstIndex(of: $0) }
+        switch key {
+        case .up: state.selectedThread = order[max((index ?? 0) - 1, 0)]
+        case .down: state.selectedThread = order[min((index ?? -1) + 1, order.count - 1)]
+        case .open:
+            T3.open(thread: state.selectedThread ?? order[0])
+            close()
         }
     }
 
@@ -200,7 +230,7 @@ final class Island {
                 toggle(.calendar)
             }
         case 2:
-            toggle(.agents)
+            toggle(.agents, keyboard: true)
         case 3:
             player.send("playpause")
         default:
@@ -399,6 +429,7 @@ final class Island {
         guard state.open else { return }
         releaseNumbers()
         Trigger.captureEscape(nil)
+        Trigger.captureList(nil)
         dismissTimer?.cancel()
         if let monitor = outsideClickMonitor {
             NSEvent.removeMonitor(monitor)

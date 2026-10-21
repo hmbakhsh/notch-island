@@ -26,7 +26,9 @@ are doing as it happens. While any thread is working or waiting on you, the
 notch grows small wings: a spinner with how many are working on the left, and
 how many need you (orange) or have finished unread (green) on the right. Click
 or hover them for the full list, with each thread's state, project, model and
-running time. (`notch --agents` opens the list directly. Banners for finished
+running time; click a thread to open it in T3. Opened from the keyboard
+(Caps Lock then 2), ↑ ↓ move through the list and ⏎ opens the highlighted
+thread. (`notch --agents` opens the list directly. Banners for finished
 threads are off by default; set `"t3Banners": true` in the config to get them
 too.)
 

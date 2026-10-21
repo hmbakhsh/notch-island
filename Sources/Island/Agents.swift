@@ -90,7 +90,9 @@ enum AgentsLayout {
 /// Live list of T3 threads that need you, are working, or finished unread.
 struct AgentsView: View {
     @ObservedObject var watcher: T3Watcher
-    let onOpen: () -> Void
+    /// Highlighted with the arrow keys.
+    let selected: String?
+    let onOpen: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -106,7 +108,7 @@ struct AgentsView: View {
             ForEach(groups, id: \.title) { group in
                 SectionHeader(text: group.title, count: group.title == "Needs you" ? group.threads.count : nil)
                 ForEach(group.threads) { thread in
-                    AgentRow(thread: thread, onOpen: onOpen)
+                    AgentRow(thread: thread, selected: thread.id == selected) { onOpen(thread.id) }
                 }
             }
             Spacer(minLength: 0)
@@ -128,6 +130,11 @@ struct AgentsView: View {
         return out.map { (title: $0.0, threads: $0.1) }
     }
 
+    /// Rows top to bottom, as the arrow keys walk them.
+    static func order(_ watcher: T3Watcher) -> [String] {
+        groups(watcher).flatMap { $0.threads.map(\.id) }
+    }
+
     static func height(_ watcher: T3Watcher) -> CGFloat {
         let groups = groups(watcher)
         return AgentsLayout.height(sections: groups.count, rows: groups.reduce(0) { $0 + $1.threads.count })
@@ -136,6 +143,7 @@ struct AgentsView: View {
 
 private struct AgentRow: View {
     let thread: WaitingThread
+    let selected: Bool
     let onOpen: () -> Void
     @State private var hovered = false
 
@@ -158,7 +166,7 @@ private struct AgentRow: View {
             .frame(height: AgentsLayout.rowHeight)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(hovered ? 0.08 : 0)))
+                    .fill(Color.white.opacity(selected ? 0.12 : hovered ? 0.08 : 0)))
             .contentShape(Rectangle())
             .onHover { hovered = $0 }
             .onTapGesture(perform: onOpen)

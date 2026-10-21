@@ -39,6 +39,8 @@ final class IslandState: ObservableObject {
     @Published var content = Content.player
     /// Opened from the keyboard: number keys act on the overview's tiles.
     @Published var keyboard = false
+    /// The thread highlighted with the arrow keys in the agents list.
+    @Published var selectedThread: String?
     /// Agents working or waiting: shown as wings beside the notch while closed.
     @Published var live: LiveCounts?
 
@@ -59,11 +61,11 @@ struct IslandView: View {
     let agenda: Agenda
     let onMessageTap: () -> Void
     let onMessageHover: (Bool) -> Void
-    let onOpenThread: () -> Void
+    let onOpenThread: (String) -> Void
     let onOpenEntry: (Entry) -> Void
     let onOpenURL: (URL) -> Void
     let onOpenPanel: (Island.Panel) -> Void
-    let onOpenT3: () -> Void
+    let onOpenAgent: (String) -> Void
 
     var body: some View {
         let radius: CGFloat = state.open ? 30 : 10
@@ -121,7 +123,7 @@ struct IslandView: View {
         case .calendar:
             AgendaView(agenda: agenda, onOpen: onOpenURL)
         case .agents:
-            AgentsView(watcher: watcher, onOpen: onOpenT3)
+            AgentsView(watcher: watcher, selected: state.selectedThread, onOpen: onOpenAgent)
         case .home:
             HomeView(
                 agenda: agenda, player: player, watcher: watcher, history: history,

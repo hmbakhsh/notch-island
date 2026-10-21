@@ -53,7 +53,11 @@ struct Message: Codable {
         if let open {
             let url = URL(string: open).flatMap { $0.scheme == nil ? nil : $0 }
                 ?? URL(fileURLWithPath: (open as NSString).expandingTildeInPath)
-            NSWorkspace.shared.open(url)
+            if url.scheme?.hasPrefix("t3code") == true {
+                T3.open(link: url)
+            } else {
+                NSWorkspace.shared.open(url)
+            }
         }
         if let run {
             let process = Process()

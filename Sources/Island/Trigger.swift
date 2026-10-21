@@ -15,6 +15,10 @@ enum Trigger {
     private static var numberKeys: [EventHotKeyRef] = []
     private static var escapeAction: (() -> Void)?
     private static var escapeKey: EventHotKeyRef?
+    private static var listAction: ((ListKey) -> Void)?
+    private static var listKeys: [EventHotKeyRef] = []
+
+    enum ListKey { case up, down, open }
     private static var handlerInstalled = false
     private static var lastPress = Date.distantPast
 
@@ -52,8 +56,27 @@ enum Trigger {
             action?()
         } else if id == 20 {
             escapeAction?()
+        } else if id >= 30 {
+            listAction?([ListKey.up, .down, .open][Int(id) - 30])
         } else {
             numberAction?(Int(id) - 10)
+        }
+    }
+
+    /// Captures ↑ ↓ and ⏎ while a list is open from the keyboard, and gives
+    /// them back as soon as it closes.
+    static func captureList(_ handler: ((ListKey) -> Void)?) {
+        listKeys.forEach { UnregisterEventHotKey($0) }
+        listKeys = []
+        listAction = handler
+        guard handler != nil else { return }
+        installHandler()
+        for (n, key) in [kVK_UpArrow, kVK_DownArrow, kVK_Return].enumerated() {
+            var ref: EventHotKeyRef?
+            let id = EventHotKeyID(signature: signature, id: UInt32(30 + n))
+            if RegisterEventHotKey(UInt32(key), 0, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+                listKeys.append(ref)
+            }
         }
     }
 
