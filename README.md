@@ -55,7 +55,7 @@ of the top edge. It appears on whichever screen the mouse is on.
 Needs macOS 14 or later, Swift 5.9+ (Xcode or the Command Line Tools) and [just](https://github.com/casey/just) (`brew install just`).
 
 ```sh
-git clone https://github.com/<owner>/notch-island
+git clone https://github.com/hmbakhsh/notch-island
 cd notch-island
 just install
 ```
