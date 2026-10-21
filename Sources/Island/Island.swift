@@ -521,7 +521,7 @@ final class Island {
     /// few seconds, iOS-style, with a sound. Skipped while the island is open.
     private func showDevice(_ device: ConnectedDevice) {
         guard !busy else { return }
-        playDeviceSound()
+        playDeviceSound(for: device)
         if !wingsVisible { showLive() }
         withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.78)) { state.device = device }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
@@ -531,8 +531,11 @@ final class Island {
         }
     }
 
-    private func playDeviceSound() {
-        let sound = Config.shared.deviceSound ?? "Tink"
+    /// AirPods and Beats play Apple's chime themselves, in your ears, as they
+    /// connect; a second sound would land on top of it. Others get "Tink".
+    private func playDeviceSound(for device: ConnectedDevice) {
+        let apple = device.symbol.hasPrefix("airpods") || device.symbol.hasPrefix("beats")
+        guard let sound = Config.shared.deviceSound ?? (apple ? nil : "Tink") else { return }
         let path = (sound as NSString).expandingTildeInPath
         if FileManager.default.fileExists(atPath: path) {
             NSSound(contentsOfFile: path, byReference: true)?.play()
