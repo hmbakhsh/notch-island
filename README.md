@@ -50,6 +50,12 @@ Island **Full Disk Access** in System Settings → Privacy & Security. To avoid
 seeing each one twice, set the app's alert style to *None* in System Settings
 → Notifications (keep "Show in Notification Center" on).
 
+**AirPods.** When AirPods or other Bluetooth headphones connect, the notch
+shows them with a battery ring for a few seconds, like on iPhone, with a sound.
+Set `"deviceSound"` to a system sound name or an audio file to change it, or
+`"deviceAlerts": false` to turn it off. `notch --preview-device "AirPods Pro"`
+shows it without connecting anything.
+
 **An inbox.** Threads still waiting on you, and your recent messages. Click a
 row to open it.
 

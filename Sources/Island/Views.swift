@@ -43,6 +43,8 @@ final class IslandState: ObservableObject {
     @Published var selected: String?
     /// Agents working or waiting: shown as wings beside the notch while closed.
     @Published var live: LiveCounts?
+    /// Headphones that just connected: take over the wings for a few seconds.
+    @Published var device: ConnectedDevice?
 
     var liveHeight: CGFloat { max(notch.height, LiveLayout.minHeight) }
     var liveWidth: CGFloat { notch.width + LiveLayout.wing * 2 }
@@ -71,7 +73,7 @@ struct IslandView: View {
         let radius: CGFloat = state.open ? 30 : 10
         let shape = UnevenRoundedRectangle(
             bottomLeadingRadius: radius, bottomTrailingRadius: radius, style: .continuous)
-        let compact = !state.open && state.live != nil
+        let compact = !state.open && (state.live != nil || state.device != nil)
         let width = state.open ? islandWidth : compact ? state.liveWidth : state.notch.width
         let height = state.open ? state.notch.height + state.content.height
             : compact ? state.liveHeight : state.notch.height
@@ -97,7 +99,11 @@ struct IslandView: View {
             .clipShape(shape)
             .opacity(state.showContent ? 1 : 0)
 
-            if compact, let live = state.live {
+            if compact, let device = state.device {
+                DeviceWings(device: device, notchWidth: state.notch.width)
+                    .frame(width: width, height: height)
+                    .transition(.opacity)
+            } else if compact, let live = state.live {
                 LiveWings(counts: live, notchWidth: state.notch.width)
                     .frame(width: width, height: height)
                     .contentShape(Rectangle())

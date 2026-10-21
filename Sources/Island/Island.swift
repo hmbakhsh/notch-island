@@ -21,6 +21,7 @@ final class Island {
     let watcher = T3Watcher()
     let agenda = Agenda()
     let mirror = NotificationMirror(apps: Config.shared.mirrorNotifications ?? [])
+    let devices = DeviceWatcher()
     let state = IslandState()
     let panel: IslandPanel
     private var queue: [Message] = []
@@ -104,6 +105,17 @@ final class Island {
         watcher.start()
         mirror.onMessage = { [weak self] message in self?.deliver(message) }
         mirror.start()
+        if Config.shared.deviceAlerts != false {
+            devices.onConnect = { [weak self] device in self?.showDevice(device) }
+            devices.onBattery = { [weak self] name, level in
+                guard self?.state.device?.name == name else { return }
+                self?.state.device?.battery = level
+            }
+            devices.start()
+        }
+        center.addObserver(forName: devicePreviewName, object: nil, queue: .main) { [weak self] note in
+            self?.devices.preview(note.userInfo?["json"] as? String ?? "AirPods Pro")
+        }
         center.addObserver(forName: homeName, object: nil, queue: .main) { [weak self] _ in
             self?.toggle(.home)
         }
@@ -303,7 +315,7 @@ final class Island {
         let notch = notchSize(of: screen)
         var width = notch.height > 0 ? notch.width : 200
         var height = max(notch.height, 4)
-        if state.live != nil, panel.isVisible, panel.screen == screen {
+        if wingsVisible, panel.isVisible, panel.screen == screen {
             width = state.liveWidth
             height = state.liveHeight
         }
@@ -464,7 +476,7 @@ final class Island {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.32 * slowmo) { [weak self] in
             guard let self, !self.state.open else { return }
             self.busy = false
-            if self.state.live != nil { self.showLive() } else { self.panel.orderOut(nil) }
+            if self.wingsVisible { self.showLive() } else { self.panel.orderOut(nil) }
             if let panel = self.requested {
                 self.requested = nil
                 self.show(panel)
@@ -488,11 +500,41 @@ final class Island {
         let appearing = state.live == nil
         if !busy, appearing, counts != nil { showLive() }
         withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.82)) { state.live = counts }
-        if !busy, counts == nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35 * slowmo) { [weak self] in
-                guard let self, !self.busy, self.state.live == nil else { return }
-                self.panel.orderOut(nil)
-            }
+        if !busy, counts == nil { hideWingsIfIdle() }
+    }
+
+    private var wingsVisible: Bool { state.live != nil || state.device != nil }
+
+    private func hideWingsIfIdle() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35 * slowmo) { [weak self] in
+            guard let self, !self.busy, !self.wingsVisible else { return }
+            self.panel.orderOut(nil)
+        }
+    }
+
+    // MARK: Devices
+
+    /// Headphones connected: show them in the wings with their battery for a
+    /// few seconds, iOS-style, with a sound. Skipped while the island is open.
+    private func showDevice(_ device: ConnectedDevice) {
+        guard !busy else { return }
+        playDeviceSound()
+        if !wingsVisible { showLive() }
+        withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.78)) { state.device = device }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+            guard let self, self.state.device?.name == device.name else { return }
+            withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.86)) { self.state.device = nil }
+            if !self.busy, !self.wingsVisible { self.hideWingsIfIdle() }
+        }
+    }
+
+    private func playDeviceSound() {
+        let sound = Config.shared.deviceSound ?? "Tink"
+        let path = (sound as NSString).expandingTildeInPath
+        if FileManager.default.fileExists(atPath: path) {
+            NSSound(contentsOfFile: path, byReference: true)?.play()
+        } else {
+            NSSound(named: sound)?.play()
         }
     }
 

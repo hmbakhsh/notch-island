@@ -171,6 +171,10 @@ struct Config: Decodable {
     /// Bundle ids whose macOS notifications show in the island, e.g.
     /// ["com.tinyspeck.slackmacgap"]. Needs Full Disk Access.
     var mirrorNotifications: [String]?
+    /// Show AirPods and other headphones in the notch when they connect (default on).
+    var deviceAlerts: Bool?
+    /// Sound for that: a system sound name ("Tink") or a path to an audio file.
+    var deviceSound: String?
 
     static let shared: Config = {
         let url = FileManager.default.homeDirectoryForCurrentUser

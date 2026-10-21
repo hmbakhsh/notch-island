@@ -8,6 +8,7 @@ let inboxName = Notification.Name("dev.notchisland.inbox")
 let calendarName = Notification.Name("dev.notchisland.calendar")
 let homeName = Notification.Name("dev.notchisland.home")
 let agentsName = Notification.Name("dev.notchisland.agents")
+let devicePreviewName = Notification.Name("dev.notchisland.device-preview")
 
 struct Message: Codable {
     var title = ""
@@ -156,6 +157,9 @@ enum Notify {
                 exit(0)
             case "--agents":
                 Agent.post(agentsName)
+                exit(0)
+            case "--preview-device":
+                Agent.post(devicePreviewName, json: value())
                 exit(0)
             case "--dismiss":
                 Agent.post(dismissName)
