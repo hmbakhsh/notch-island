@@ -83,10 +83,18 @@ To show only some calendars, list their names (as shown in Calendar.app) in
 `~/.config/notch-island/config.json`:
 
 ```json
-{ "calendars": ["work@example.com", "Personal"] }
+{
+  "calendars": [
+    { "name": "me@work.com", "label": "Work", "color": "#4C8DFF" },
+    { "name": "Personal", "label": "Personal", "color": "#34C759" }
+  ]
+}
 ```
 
-Without it, every calendar except birthdays and subscribed ones is shown.
+A plain name (`"Personal"`) works too. With a `label`, each event gets a small
+chip in that colour saying which calendar it's from, so work and personal are
+easy to tell apart. Without `calendars`, every calendar except birthdays and
+subscribed ones is shown.
 
 To open the overview with **Caps Lock**, add `"capsLockTrigger": true` to the
 same file and restart Island (`just install`). Island remaps Caps Lock to F18

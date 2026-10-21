@@ -43,7 +43,8 @@ struct HomeView: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     primary(event.title)
-                    secondary(when(event), color: event.isNow ? .green : nil)
+                    secondary([event.tag, when(event)].compactMap { $0 }.joined(separator: " · "),
+                              color: event.isNow ? .green : nil)
                 }
                 if let url = event.joinURL {
                     Spacer(minLength: 2)

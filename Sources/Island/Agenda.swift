@@ -10,6 +10,8 @@ struct AgendaEvent: Identifiable {
     let start: Date
     let end: Date
     let color: Color
+    /// "Work", "Personal": the calendar's label from the config, if it has one.
+    let tag: String?
     /// Location, or the meeting service when the location is just a link.
     let detail: String?
     let joinURL: URL?
@@ -80,7 +82,7 @@ final class Agenda: ObservableObject {
         let now = Date()
         let calendar = Calendar.current
         let end = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: now))!
-        let wanted = Config.shared.calendars
+        let wanted = Config.shared.calendars?.map(\.name)
         let calendars = store.calendars(for: .event).filter { cal in
             if let wanted { return wanted.contains(cal.title) }
             return cal.type != .birthday && cal.type != .subscription
@@ -101,6 +103,9 @@ final class Agenda: ObservableObject {
             .map(Self.makeEvent)
     }
 
+    private static let calendarConfigs = Dictionary(
+        (Config.shared.calendars ?? []).map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+
     private static func makeEvent(_ e: EKEvent) -> AgendaEvent {
         let link = joinLink(in: [e.url?.absoluteString, e.location, e.notes])
         // "Techspace Goswell Road, 140 Goswell Rd, London" → "Techspace Goswell Road"
@@ -113,7 +118,8 @@ final class Agenda: ObservableObject {
             title: e.title ?? "Untitled",
             start: e.startDate,
             end: e.endDate,
-            color: Color(cgColor: e.calendar.cgColor),
+            color: calendarConfigs[e.calendar.title]?.tint ?? Color(cgColor: e.calendar.cgColor),
+            tag: calendarConfigs[e.calendar.title]?.label,
             detail: detail,
             joinURL: link,
             calendarURL: e.eventIdentifier
@@ -152,11 +158,12 @@ private extension EKEvent {
 }
 
 /// ~/.config/notch-island/config.json, read once at launch:
-///   { "calendars": ["work@example.com", "Personal"], "capsLockTrigger": true }
+///   { "calendars": ["Personal", {"name": "me@work.com", "label": "Work", "color": "#4C8DFF"}],
+///     "capsLockTrigger": true }
 /// Without "calendars", every calendar except birthdays and subscriptions shows.
 /// "capsLockTrigger" makes Caps Lock open and close the island.
 struct Config: Decodable {
-    var calendars: [String]?
+    var calendars: [CalendarConfig]?
     var capsLockTrigger: Bool?
     /// Banners when T3 threads finish or need you (the live indicator shows
     /// the same thing, so this is off by default).
@@ -170,6 +177,34 @@ struct Config: Decodable {
         else { return Config() }
         return config
     }()
+}
+
+/// A calendar to show: just its name as in Calendar.app, or the name with a
+/// label and colour so events say which calendar they're from.
+struct CalendarConfig: Decodable {
+    var name: String
+    var label: String?
+    var color: String?
+
+    init(from decoder: Decoder) throws {
+        if let name = try? decoder.singleValueContainer().decode(String.self) {
+            self.name = name
+            return
+        }
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        label = try c.decodeIfPresent(String.self, forKey: .label)
+        color = try c.decodeIfPresent(String.self, forKey: .color)
+    }
+
+    private enum CodingKeys: String, CodingKey { case name, label, color }
+
+    var tint: Color? {
+        guard let color else { return nil }
+        var m = Message()
+        m.color = color
+        return m.tint
+    }
 }
 
 // MARK: - View
@@ -259,6 +294,7 @@ private struct EventRow: View {
                 }
                 .lineLimit(1)
                 Spacer(minLength: 6)
+                if let tag = event.tag { TagChip(text: tag, color: event.color) }
                 if let url = event.joinURL {
                     Button { onOpen(url) } label: {
                         Label("Join", systemImage: "video.fill")
@@ -299,6 +335,22 @@ private struct EventRow: View {
         let m = Int((seconds + 59) / 60)
         if m < 60 { return "\(m)m" }
         return m % 60 == 0 ? "\(m / 60)h" : "\(m / 60)h \(m % 60)m"
+    }
+}
+
+/// A small coloured label saying which calendar an event is from.
+struct TagChip: View {
+    let text: String
+    let color: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .frame(height: 18)
+            .background(Capsule().fill(color.opacity(0.18)))
+            .fixedSize()
     }
 }
 
