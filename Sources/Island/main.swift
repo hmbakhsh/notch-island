@@ -4,6 +4,7 @@
 //   notch TITLE [BODY] …   show a message (notch is a symlink to Island)
 //   notch --inbox          open/close the inbox
 //   notch --spotify        open/close the Spotify player
+//   notch --calendar       open/close upcoming calendar events
 
 import AppKit
 
@@ -13,6 +14,7 @@ let usage = """
            notch --dismiss                                 hide the message on screen now
            notch --inbox                                   open/close the inbox (history + waiting T3 threads)
            notch --spotify                                 open/close the Spotify player
+           notch --calendar                                open/close upcoming calendar events
 
     History is kept in ~/.local/state/notch/history.jsonl (one JSON entry per line).
 

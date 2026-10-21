@@ -19,6 +19,7 @@ final class Island {
     let player = Player()
     let history = History()
     let watcher = T3Watcher()
+    let agenda = Agenda()
     let state = IslandState()
     let panel: IslandPanel
     private var queue: [Message] = []
@@ -39,7 +40,7 @@ final class Island {
         panel.level = .screenSaver
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         panel.contentView = FirstClickHost(rootView: IslandView(
-            state: state, player: player, history: history, watcher: watcher,
+            state: state, player: player, history: history, watcher: watcher, agenda: agenda,
             onMessageTap: { [weak self] in self?.tapMessage() },
             onMessageHover: { [weak self] inside in self?.hoverMessage(inside) },
             onOpenThread: { [weak self] in
@@ -48,6 +49,10 @@ final class Island {
             },
             onOpenEntry: { [weak self] entry in
                 entry.message.perform()
+                self?.close()
+            },
+            onOpenURL: { [weak self] url in
+                NSWorkspace.shared.open(url)
                 self?.close()
             }))
 
@@ -60,6 +65,9 @@ final class Island {
         }
         center.addObserver(forName: inboxName, object: nil, queue: .main) { [weak self] _ in
             self?.toggle(.inbox)
+        }
+        center.addObserver(forName: calendarName, object: nil, queue: .main) { [weak self] _ in
+            self?.toggle(.calendar)
         }
         center.addObserver(forName: messageName, object: nil, queue: .main) { [weak self] note in
             guard let json = note.userInfo?["json"] as? String,
@@ -80,13 +88,14 @@ final class Island {
 
     // MARK: Panels opened from the bar
 
-    enum Panel { case player, inbox }
+    enum Panel { case player, inbox, calendar }
 
     private var openPanel: Panel? {
         guard state.open else { return nil }
         switch state.content {
         case .player: return .player
         case .inbox: return .inbox
+        case .calendar: return .calendar
         case .message: return nil
         }
     }
@@ -116,7 +125,19 @@ final class Island {
             updateBar()
             present(.inbox(height: InboxLayout.height(
                 waiting: watcher.waiting.count, recent: history.entries.count)))
+        case .calendar:
+            // The first time, this waits for the calendar permission prompt.
+            agenda.refresh { [weak self] in
+                guard let self, !self.busy else { return }
+                self.present(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
+                self.watchOutsideClicks()
+            }
+            return
         }
+        watchOutsideClicks()
+    }
+
+    private func watchOutsideClicks() {
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] _ in
             self?.closedByOutsideClickAt = Date()

@@ -18,6 +18,10 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Island shows your upcoming events when you open the calendar panel.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Island shows your upcoming events when you open the calendar panel.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Island shows what Spotify is playing and controls playback.</string>
 </dict>

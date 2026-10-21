@@ -5,6 +5,7 @@ let spotifyToggleName = Notification.Name("dev.notchisland.spotify")
 let messageName = Notification.Name("dev.notchisland.message")
 let dismissName = Notification.Name("dev.notchisland.dismiss")
 let inboxName = Notification.Name("dev.notchisland.inbox")
+let calendarName = Notification.Name("dev.notchisland.calendar")
 
 struct Message: Codable {
     var title = ""
@@ -136,6 +137,9 @@ enum Notify {
                 exit(0)
             case "--spotify":
                 Agent.post(spotifyToggleName)
+                exit(0)
+            case "--calendar":
+                Agent.post(calendarName)
                 exit(0)
             case "--dismiss":
                 Agent.post(dismissName)

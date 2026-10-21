@@ -2,7 +2,7 @@
 
 ![A "Tests passed" banner dropping out of a MacBook's notch](docs/screenshots/hero.png)
 
-A Dynamic Island for the Mac. Messages, agent status and Spotify drop out of
+A Dynamic Island for the Mac. Messages, agent status, your calendar and Spotify drop out of
 the notch as a black island, and anything that can run a shell command can
 send one:
 
@@ -45,6 +45,12 @@ row to open it.
   <img src="docs/screenshots/spotify.png" width="428" alt="Spotify now-playing panel">
 </p>
 
+**Calendar.** The rest of today and tomorrow from the calendars in
+Calendar.app, with time left for the current event and a Join button for
+Meet, Zoom, Teams, Whereby and Webex links. Declined, cancelled, all-day and
+out-of-office events are hidden. Open it with `notch --calendar`, e.g. from a
+status bar item.
+
 On a Mac with a notch the island grows out of it; on other screens it grows out
 of the top edge. It appears on whichever screen the mouse is on.
 
@@ -62,8 +68,17 @@ This builds `Island.app` into `~/Applications`, links the `notch` CLI into
 `~/.local/bin` (put that on your `PATH`), and adds a login item so Island runs
 in the background. `just uninstall` removes all three.
 
-The first time the Spotify panel is used, macOS asks to let Island control
-Spotify.
+The first time the Spotify or calendar panel is used, macOS asks for
+permission to control Spotify or read your calendars.
+
+To show only some calendars, list their names (as shown in Calendar.app) in
+`~/.config/notch-island/config.json`:
+
+```json
+{ "calendars": ["work@example.com", "Personal"] }
+```
+
+Without it, every calendar except birthdays and subscribed ones is shown.
 
 ## Sending messages
 
@@ -88,6 +103,7 @@ notch TITLE [BODY] [options]
 | `--dismiss` | Hide the banner on screen now |
 | `--inbox` | Open or close the inbox |
 | `--spotify` | Open or close the Spotify panel |
+| `--calendar` | Open or close upcoming calendar events |
 
 From a program, `--json` is easiest:
 

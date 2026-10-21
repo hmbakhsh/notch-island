@@ -5,12 +5,13 @@ enum Content {
     case player
     case message(Message)
     case inbox(height: CGFloat)
+    case calendar(height: CGFloat)
 
     var height: CGFloat {
         switch self {
         case .player: return 168
         case .message(let m): return m.body == nil ? 60 : 82
-        case .inbox(let height): return height
+        case .inbox(let height), .calendar(let height): return height
         }
     }
 }
@@ -33,10 +34,12 @@ struct IslandView: View {
     let player: Player
     let history: History
     let watcher: T3Watcher
+    let agenda: Agenda
     let onMessageTap: () -> Void
     let onMessageHover: (Bool) -> Void
     let onOpenThread: () -> Void
     let onOpenEntry: (Entry) -> Void
+    let onOpenURL: (URL) -> Void
 
     var body: some View {
         let radius: CGFloat = state.open ? (state.content.height > 100 ? 30 : 24) : 10
@@ -73,6 +76,8 @@ struct IslandView: View {
                 .onHover(perform: onMessageHover)
         case .inbox:
             InboxView(history: history, watcher: watcher, onOpenThread: onOpenThread, onOpenEntry: onOpenEntry)
+        case .calendar:
+            AgendaView(agenda: agenda, onOpen: onOpenURL)
         }
     }
 }

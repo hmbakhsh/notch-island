@@ -227,7 +227,7 @@ enum InboxLayout {
     static let maxWaiting = 4
     static let maxRecent = 5
     static let rowHeight: CGFloat = 44
-    static let headerHeight: CGFloat = 26
+    static let headerHeight = SectionHeader.height
 
     static func height(waiting: Int, recent: Int) -> CGFloat {
         let w = min(waiting, maxWaiting), r = min(max(recent, 1), maxRecent)
@@ -244,7 +244,7 @@ struct InboxView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !watcher.waiting.isEmpty {
-                header("Waiting on you", count: watcher.waiting.count)
+                SectionHeader(text: "Waiting on you", count: watcher.waiting.count)
                 ForEach(watcher.waiting.prefix(InboxLayout.maxWaiting)) { thread in
                     Row(
                         leading: AnyView(MessageIcon(message: thread.message, size: 28)),
@@ -255,7 +255,7 @@ struct InboxView: View {
                 }
                 Spacer().frame(height: 6)
             }
-            header("Recent", count: nil)
+            SectionHeader(text: "Recent")
             if history.entries.isEmpty {
                 Text("Nothing yet")
                     .font(.system(size: 12.5))
@@ -274,24 +274,6 @@ struct InboxView: View {
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
-    }
-
-    private func header(_ text: String, count: Int?) -> some View {
-        HStack(spacing: 6) {
-            Text(text.uppercased())
-                .font(.system(size: 10.5, weight: .semibold))
-                .kerning(0.6)
-                .foregroundStyle(.white.opacity(0.4))
-            if let count {
-                Text("\(count)")
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 5)
-                    .background(Capsule().fill(Color.orange))
-            }
-        }
-        .padding(.horizontal, 8)
-        .frame(height: InboxLayout.headerHeight, alignment: .center)
     }
 }
 
