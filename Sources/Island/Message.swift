@@ -79,7 +79,7 @@ enum Agent {
         guard pgrep.terminationStatus != 0, let me = Bundle.main.executableURL?.resolvingSymlinksInPath() else { return }
 
         // Inside Island.app, launch the app so macOS attributes permissions to
-        // it; a bare build (swift run, make build) is started directly.
+        // it; a bare build (swift run, just build) is started directly.
         let app = me.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let launcher = Process()
         if app.pathExtension == "app" {

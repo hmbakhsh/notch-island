@@ -77,4 +77,4 @@ don't send a separate `notch` just to say a T3 turn ended.
 
 If `notch` is not found, the machine isn't set up for it; skip the notification
 rather than failing the task (it is installed with notch-island's
-`make install`).
+`just install`).

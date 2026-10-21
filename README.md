@@ -52,17 +52,17 @@ of the top edge. It appears on whichever screen the mouse is on.
 
 ## Install
 
-Needs macOS 14 or later and Swift 5.9+ (Xcode or the Command Line Tools).
+Needs macOS 14 or later, Swift 5.9+ (Xcode or the Command Line Tools) and [just](https://github.com/casey/just) (`brew install just`).
 
 ```sh
 git clone https://github.com/<owner>/notch-island
 cd notch-island
-make install
+just install
 ```
 
 This builds `Island.app` into `~/Applications`, links the `notch` CLI into
 `~/.local/bin` (put that on your `PATH`), and adds a login item so Island runs
-in the background. `make uninstall` removes all three.
+in the background. `just uninstall` removes all three.
 
 The first time the Spotify panel is used, macOS asks to let Island control
 Spotify.
@@ -141,9 +141,9 @@ reporting T3 threads rather than failing.
 ## Development
 
 ```sh
-make run                          # debug build in the foreground
-ISLAND_SLOWMO=8 make run          # slow animations down 8x
-./scripts/screenshots.sh          # regenerate docs/screenshots from demo data
+just run                          # debug build in the foreground
+ISLAND_SLOWMO=8 just run          # slow animations down 8x
+just screenshots                  # regenerate docs/screenshots from demo data
 ```
 
 | Variable | |
