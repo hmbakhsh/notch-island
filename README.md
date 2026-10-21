@@ -87,7 +87,10 @@ Without it, every calendar except birthdays and subscribed ones is shown.
 To open the overview with **Caps Lock**, add `"capsLockTrigger": true` to the
 same file and restart Island (`just install`). Island remaps Caps Lock to F18
 (a key Mac keyboards don't have) with `hidutil` and listens for that, so it
-needs no Accessibility permission; other key remaps are kept. To use a
+needs no Accessibility permission; other key remaps are kept. If you've set
+Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Island
+follows that too when it's a right-side modifier (built-in keyboards don't
+have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. To use a
 different key, bind `notch --home` in Raycast, skhd or similar instead.
 
 ## Sending messages

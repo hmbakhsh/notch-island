@@ -15,10 +15,12 @@ enum Trigger {
         remapCapsLock()
         Self.action = action
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
+        let installed = InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
+            log("trigger pressed")
             DispatchQueue.main.async { Trigger.action?() }
             return noErr
         }, 1, &spec, nil, nil)
+        log("hot key handler installed, status \(installed)")
         let id = EventHotKeyID(signature: OSType(0x4E54_4348), id: 1)  // "NTCH"
         let status = RegisterEventHotKey(UInt32(kVK_F18), 0, id, GetApplicationEventTarget(), 0, &hotKey)
         log("Caps Lock trigger registered, status \(status)")
@@ -39,10 +41,36 @@ enum Trigger {
             pairs.append((src, dst))
         }
         pairs.append((capsLock, f18))
+        // System Settings → Modifier Keys may already send Caps Lock as another
+        // key, and that mapping can run before ours. Map that key to F18 too,
+        // but only right-side modifiers: built-in keyboards don't have them.
+        for alias in settingsCapsLockTargets() where (0x7_0000_00E4...0x7_0000_00E7).contains(alias) {
+            pairs.removeAll { $0.0 == alias }
+            pairs.append((alias, f18))
+            log("Caps Lock is set to send \(String(alias, radix: 16)) in System Settings; mapping that to F18 too")
+        }
         let json = pairs
             .map { #"{"HIDKeyboardModifierMappingSrc":\#($0.0),"HIDKeyboardModifierMappingDst":\#($0.1)}"# }
             .joined(separator: ",")
         _ = hidutil(["property", "--set", #"{"UserKeyMapping":[\#(json)]}"#])
+    }
+
+    /// What System Settings → Modifier Keys sends for Caps Lock, per keyboard.
+    private static func settingsCapsLockTargets() -> Set<UInt64> {
+        let any = kCFPreferencesAnyApplication, user = kCFPreferencesCurrentUser, host = kCFPreferencesCurrentHost
+        guard let keys = CFPreferencesCopyKeyList(any, user, host) as? [String] else { return [] }
+        var targets = Set<UInt64>()
+        for key in keys where key.hasPrefix("com.apple.keyboard.modifiermapping") {
+            let mappings = CFPreferencesCopyValue(key as CFString, any, user, host) as? [[String: Any]] ?? []
+            for m in mappings {
+                guard let src = (m["HIDKeyboardModifierMappingSrc"] as? NSNumber)?.uint64Value,
+                      let dst = (m["HIDKeyboardModifierMappingDst"] as? NSNumber)?.uint64Value,
+                      src == capsLock, dst != capsLock
+                else { continue }
+                targets.insert(dst)
+            }
+        }
+        return targets
     }
 
     @discardableResult
