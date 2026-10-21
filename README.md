@@ -36,6 +36,20 @@ too.)
   <img src="docs/screenshots/t3-failed.png" width="428" alt="T3 thread failed">
 </p>
 
+**Slack (or any app's) notifications.** List apps in the config and their
+macOS notifications drop out of the notch instead, with bursts merged into one
+"3 new Slack messages" banner:
+
+```json
+{ "mirrorNotifications": ["com.tinyspeck.slackmacgap"] }
+```
+
+Island reads them from macOS's notification database, so it sees exactly what
+the app would notify you about, with no tokens. That file is protected: give
+Island **Full Disk Access** in System Settings → Privacy & Security. To avoid
+seeing each one twice, set the app's alert style to *None* in System Settings
+→ Notifications (keep "Show in Notification Center" on).
+
 **An inbox.** Threads still waiting on you, and your recent messages. Click a
 row to open it.
 

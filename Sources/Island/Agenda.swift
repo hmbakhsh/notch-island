@@ -168,6 +168,9 @@ struct Config: Decodable {
     /// Banners when T3 threads finish or need you (the live indicator shows
     /// the same thing, so this is off by default).
     var t3Banners: Bool?
+    /// Bundle ids whose macOS notifications show in the island, e.g.
+    /// ["com.tinyspeck.slackmacgap"]. Needs Full Disk Access.
+    var mirrorNotifications: [String]?
 
     static let shared: Config = {
         let url = FileManager.default.homeDirectoryForCurrentUser

@@ -20,6 +20,7 @@ final class Island {
     let history = History()
     let watcher = T3Watcher()
     let agenda = Agenda()
+    let mirror = NotificationMirror(apps: Config.shared.mirrorNotifications ?? [])
     let state = IslandState()
     let panel: IslandPanel
     private var queue: [Message] = []
@@ -101,6 +102,8 @@ final class Island {
             self?.updateLive()
         }
         watcher.start()
+        mirror.onMessage = { [weak self] message in self?.deliver(message) }
+        mirror.start()
         center.addObserver(forName: homeName, object: nil, queue: .main) { [weak self] _ in
             self?.toggle(.home)
         }
@@ -326,7 +329,18 @@ final class Island {
     private func deliver(_ message: Message) {
         history.add(message)
         updateBar()
-        queue.append(message)
+        // A burst from one app becomes a single "3 new Slack messages" banner.
+        if let app = message.mirroredFrom,
+           let i = queue.firstIndex(where: { $0.mirroredFrom == app }) {
+            let count = (queue[i].mergedCount ?? 1) + 1
+            var merged = message
+            merged.mergedCount = count
+            merged.body = [message.title, message.body].compactMap { $0 }.joined(separator: ": ")
+            merged.title = "\(count) new \(message.source ?? "") messages"
+            queue[i] = merged
+        } else {
+            queue.append(message)
+        }
         showNext()
     }
 

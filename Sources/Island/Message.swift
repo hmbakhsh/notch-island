@@ -22,6 +22,10 @@ struct Message: Codable {
     var open: String?
     var run: String?
     var sound: String?
+    /// Set for notifications mirrored from another app (its bundle id), so
+    /// bursts from the same app can be merged.
+    var mirroredFrom: String?
+    var mergedCount: Int?
 
     var tint: Color {
         let named: [String: Color] = [
