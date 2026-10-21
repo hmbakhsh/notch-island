@@ -1,5 +1,7 @@
 # notch-island
 
+![A "Tests passed" banner dropping out of a MacBook's notch](docs/screenshots/hero.png)
+
 A Dynamic Island for the Mac. Messages, agent status and Spotify drop out of
 the notch as a black island, and anything that can run a shell command can
 send one:
@@ -7,10 +9,6 @@ send one:
 ```sh
 notch "Tests passed" -b "412 passed in 2m 14s" -s "Claude · api" -i checkmark.circle.fill -c green
 ```
-
-<p align="center">
-  <img src="docs/screenshots/message-success.png" width="428" alt="A 'Tests passed' banner below the notch">
-</p>
 
 It was built for coding agents: they finish, fail or get stuck while you're in
 another window, and a banner from the notch is hard to miss without being a
@@ -144,6 +142,7 @@ reporting T3 threads rather than failing.
 just run                          # debug build in the foreground
 ISLAND_SLOWMO=8 just run          # slow animations down 8x
 just screenshots                  # regenerate docs/screenshots from demo data
+just hero                         # re-render the README hero from docs/hero/hero.html
 ```
 
 | Variable | |

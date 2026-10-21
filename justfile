@@ -44,5 +44,11 @@ run:
 screenshots:
     ./scripts/screenshots.sh
 
+# Render docs/screenshots/hero.png from docs/hero/hero.html (needs Google Chrome)
+hero:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
+      --hide-scrollbars --allow-file-access-from-files --force-device-scale-factor=2 \
+      --window-size=1280,720 --screenshot=docs/screenshots/hero.png "file://$PWD/docs/hero/hero.html" 2>/dev/null
+
 clean:
     rm -rf .build build

@@ -1,0 +1,116 @@
+<!doctype html>
+<!-- Hero mockup for the README. Render with `just hero`. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; }
+  body {
+    background: linear-gradient(160deg, #eef0f6 0%, #dde3ee 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* MacBook display, cropped at the bottom of the image */
+  .mac {
+    position: absolute; left: 50%; top: 56px; transform: translateX(-50%);
+    width: 1140px; height: 760px; padding: 13px 13px 0;
+    background: #08080a; border-radius: 38px 38px 0 0;
+    box-shadow: 0 40px 90px rgba(24, 32, 64, .35), inset 0 0 0 1.5px #2b2b30;
+  }
+  .screen {
+    position: relative; width: 100%; height: 100%; overflow: hidden;
+    border-radius: 25px 25px 0 0;
+    background:
+      radial-gradient(60% 70% at 18% 30%, #4a63f5 0%, transparent 70%),
+      radial-gradient(50% 60% at 85% 18%, #b64cf2 0%, transparent 70%),
+      radial-gradient(60% 60% at 70% 95%, #ff8a5c 0%, transparent 70%),
+      radial-gradient(70% 70% at 30% 100%, #2fc4d9 0%, transparent 70%),
+      #1c1747;
+  }
+
+  .menubar {
+    position: absolute; inset: 0 0 auto 0; height: 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px; color: #fff; font-size: 13.5px;
+    background: rgba(10, 8, 30, .22); backdrop-filter: blur(30px);
+  }
+  .menubar .left, .menubar .right { display: flex; align-items: center; gap: 19px; }
+  .menubar .apple { font-size: 16px; margin-top: -2px; }
+  .menubar b { font-weight: 700; }
+  .menubar svg { display: block; }
+
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 186px; height: 32px; background: #000; border-radius: 0 0 11px 11px;
+  }
+  .island { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 428px; z-index: 2; }
+
+  /* A terminal behind it, with the agent that just finished */
+  .window {
+    position: absolute; top: 168px; left: 50%; transform: translateX(-50%);
+    width: 780px; height: 560px; border-radius: 13px;
+    background: rgba(18, 18, 24, .93);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .09);
+  }
+  .titlebar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; position: relative; }
+  .titlebar i { width: 12px; height: 12px; border-radius: 50%; }
+  .titlebar span {
+    position: absolute; left: 0; right: 0; text-align: center;
+    color: rgba(255, 255, 255, .45); font-size: 12.5px; font-weight: 600;
+  }
+  pre {
+    padding: 14px 26px; color: rgba(255, 255, 255, .78);
+    font: 14px/1.75 "JetBrains Mono", "SF Mono", Menlo, monospace;
+  }
+  .dim { color: rgba(255, 255, 255, .38); }
+  .you { color: #fff; }
+  .dot { color: #b48cff; }
+  .ok { color: #6ee7a0; }
+  .cursor { display: inline-block; width: 9px; height: 17px; background: rgba(255, 255, 255, .7); vertical-align: -3px; }
+</style>
+</head>
+<body>
+  <div class="mac">
+    <div class="screen">
+      <div class="menubar">
+        <div class="left">
+          <svg width="14" height="17" viewBox="0 0 24 24" fill="#fff" style="margin-top:-2px"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg><b>Ghostty</b><span>Shell</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span>
+        </div>
+        <div class="right">
+          <svg width="17" height="13" viewBox="0 0 17 13" fill="#fff"><path d="M8.5 2.2c2.6 0 4.9 1 6.6 2.7l1.2-1.2C14.3 1.6 11.5.5 8.5.5S2.7 1.6.7 3.7l1.2 1.2C3.6 3.2 5.9 2.2 8.5 2.2zm0 3.4c1.6 0 3.1.6 4.2 1.7l1.2-1.2C12.4 4.6 10.5 3.9 8.5 3.9S4.6 4.6 3.1 6.1l1.2 1.2C5.4 6.2 6.9 5.6 8.5 5.6zm0 3.4c.7 0 1.3.3 1.8.7L8.5 11.5 6.7 9.7c.5-.4 1.1-.7 1.8-.7z"/></svg>
+          <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="rgba(255,255,255,.5)"/><rect x="2.2" y="2.2" width="17" height="8.6" rx="2" fill="#fff"/><path d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2z" fill="rgba(255,255,255,.5)"/></svg>
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#fff" stroke-width="1.6"><circle cx="6.2" cy="6.2" r="4.7"/><path d="M9.7 9.7l4 4" stroke-linecap="round"/></svg>
+          <span>Wed 21 Oct&nbsp;&nbsp;18:42</span>
+        </div>
+      </div>
+      <div class="notch"></div>
+      <img class="island" src="../screenshots/message-success.png">
+
+      <div class="window">
+        <div class="titlebar">
+          <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
+          <span>~/code/api — claude</span>
+        </div>
+<pre><span class="dim">›</span> <span class="you">run the test suite and fix whatever breaks</span>
+
+<span class="dot">⏺</span> Running <span class="you">pnpm test</span><span class="dim">…</span>
+  <span class="dim">⎿</span>  3 failed in <span class="you">checkout.spec.ts</span>
+
+<span class="dot">⏺</span> The retry helper resets its counter on every
+  attempt, so the timeout never fires. Fixing.
+  <span class="dim">⎿</span>  Updated <span class="you">src/lib/retry.ts</span> <span class="dim">(+6 −3)</span>
+
+<span class="dot">⏺</span> Running <span class="you">pnpm test</span><span class="dim">…</span>
+  <span class="dim">⎿</span>  <span class="ok">412 passed</span> in 2m 14s
+
+<span class="dot">⏺</span> All green. <span class="dim">notch "Tests passed" -b "412 passed in 2m 14s" …</span>
+
+<span class="dim">›</span> <span class="cursor"></span>
+</pre>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
