@@ -15,6 +15,7 @@ let usage = """
            notch --inbox                                   open/close the inbox (history + waiting T3 threads)
            notch --spotify                                 open/close the Spotify player
            notch --calendar                                open/close upcoming calendar events
+           notch --home                                    open/close the overview (bind it to any key)
 
     History is kept in ~/.local/state/notch/history.jsonl (one JSON entry per line).
 

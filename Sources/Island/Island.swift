@@ -33,6 +33,8 @@ final class Island {
     private var hoverTimer: Timer?
     private var hoverSince: Date?
     private var hoverLeftAt: Date?
+    /// Opened from the keyboard, so moving the mouse doesn't close it.
+    private var homePinned = false
 
     init() {
         panel = IslandPanel(
@@ -86,6 +88,12 @@ final class Island {
         watcher.onNew = { [weak self] thread in self?.deliver(thread.message) }
         watcher.onChange = { [weak self] in self?.updateBar() }
         watcher.start()
+        center.addObserver(forName: homeName, object: nil, queue: .main) { [weak self] _ in
+            self?.toggle(.home)
+        }
+        if Config.shared.capsLockTrigger == true {
+            Trigger.install { [weak self] in self?.toggle(.home) }
+        }
         hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.checkHover()
         }
@@ -95,7 +103,7 @@ final class Island {
 
     // MARK: Panels opened from the bar
 
-    enum Panel { case player, inbox, calendar }
+    enum Panel { case player, inbox, calendar, home }
 
     private var openPanel: Panel? {
         guard state.open else { return nil }
@@ -103,12 +111,14 @@ final class Island {
         case .player: return .player
         case .inbox: return .inbox
         case .calendar: return .calendar
-        case .message, .home: return nil
+        case .home: return .home
+        case .message: return nil
         }
     }
 
     private func toggle(_ panel: Panel) {
-        if openPanel == panel {
+        if openPanel == panel || (panel == .home && openPanel != nil) {
+            // The trigger key closes whatever panel is open.
             close()
         } else if case .home = state.content, state.open {
             content(for: panel) { [weak self] content in
@@ -151,6 +161,11 @@ final class Island {
                 guard let self else { return }
                 done(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
             }
+        case .home:
+            agenda.reloadIfAllowed()
+            player.refresh()
+            homePinned = true
+            done(.home)
         }
     }
 
@@ -162,6 +177,7 @@ final class Island {
         let now = Date()
 
         if case .home = state.content, state.open {
+            guard !homePinned else { return }
             let inside = NSMouseInRect(mouse, islandFrame, false)
                 || panel.screen.map { NSMouseInRect(mouse, hotZone(on: $0), false) } == true
             if inside {
@@ -195,6 +211,7 @@ final class Island {
         agenda.reloadIfAllowed()
         player.refresh()
         hoverLeftAt = nil
+        homePinned = false
         present(.home)
     }
 

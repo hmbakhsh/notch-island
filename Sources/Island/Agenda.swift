@@ -49,7 +49,7 @@ final class Agenda: ObservableObject {
         // Island is a background app; bring it forward so the prompt shows.
         NSApp.activate(ignoringOtherApps: true)
         store.requestFullAccessToEvents { [weak self] granted, error in
-            NSLog("Island: calendar access granted=\(granted) error=\(String(describing: error))")
+            log("calendar access granted=\(granted) error=\(String(describing: error))")
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.access = Self.currentAccess
@@ -142,10 +142,12 @@ private extension EKEvent {
 }
 
 /// ~/.config/notch-island/config.json, read once at launch:
-///   { "calendars": ["work@example.com", "Personal"] }
+///   { "calendars": ["work@example.com", "Personal"], "capsLockTrigger": true }
 /// Without "calendars", every calendar except birthdays and subscriptions shows.
+/// "capsLockTrigger" makes Caps Lock open and close the island.
 struct Config: Decodable {
     var calendars: [String]?
+    var capsLockTrigger: Bool?
 
     static let shared: Config = {
         let url = FileManager.default.homeDirectoryForCurrentUser

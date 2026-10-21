@@ -19,7 +19,9 @@ app: build
     mkdir -p {{app}}/Contents/MacOS
     cp .build/release/Island {{app}}/Contents/MacOS/Island
     cp Resources/Info.plist {{app}}/Contents/Info.plist
-    codesign --force --sign - {{app}}
+    # Ad-hoc signed, but matched by bundle id rather than build hash, so macOS
+    # keeps the calendar and Spotify permissions across rebuilds.
+    codesign --force --sign - -r='designated => identifier "dev.notchisland.Island"' {{app}}
 
 install: app
     -launchctl bootout gui/$(id -u)/{{label}} 2>/dev/null

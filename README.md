@@ -51,8 +51,9 @@ Meet, Zoom, Teams, Whereby and Webex links; clicking a call joins it too. Declin
 out-of-office events are hidden. Open it with `notch --calendar`, e.g. from a
 status bar item.
 
-**Hover the notch** for an overview: your next event (with Join), the inbox
-and Spotify, side by side. Click a tile to open it; move away to close.
+**Hover the notch** (or press Caps Lock, see below) for an overview: your next
+event (with Join), the inbox and Spotify, side by side. Click a tile to open
+it; move away to close.
 
 On a Mac with a notch the island grows out of it; on other screens it grows out
 of the top edge. It appears on whichever screen the mouse is on.
@@ -83,6 +84,12 @@ To show only some calendars, list their names (as shown in Calendar.app) in
 
 Without it, every calendar except birthdays and subscribed ones is shown.
 
+To open the overview with **Caps Lock**, add `"capsLockTrigger": true` to the
+same file and restart Island (`just install`). Island remaps Caps Lock to F18
+(a key Mac keyboards don't have) with `hidutil` and listens for that, so it
+needs no Accessibility permission; other key remaps are kept. To use a
+different key, bind `notch --home` in Raycast, skhd or similar instead.
+
 ## Sending messages
 
 ```sh
@@ -107,6 +114,7 @@ notch TITLE [BODY] [options]
 | `--inbox` | Open or close the inbox |
 | `--spotify` | Open or close the Spotify panel |
 | `--calendar` | Open or close upcoming calendar events |
+| `--home` | Open or close the overview |
 
 From a program, `--json` is easiest:
 

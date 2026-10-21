@@ -6,6 +6,7 @@ let messageName = Notification.Name("dev.notchisland.message")
 let dismissName = Notification.Name("dev.notchisland.dismiss")
 let inboxName = Notification.Name("dev.notchisland.inbox")
 let calendarName = Notification.Name("dev.notchisland.calendar")
+let homeName = Notification.Name("dev.notchisland.home")
 
 struct Message: Codable {
     var title = ""
@@ -141,6 +142,9 @@ enum Notify {
             case "--calendar":
                 Agent.post(calendarName)
                 exit(0)
+            case "--home":
+                Agent.post(homeName)
+                exit(0)
             case "--dismiss":
                 Agent.post(dismissName)
                 exit(0)
@@ -160,5 +164,20 @@ enum Notify {
         let json = String(decoding: try! JSONEncoder().encode(message), as: UTF8.self)
         Agent.post(messageName, json: json)
         exit(0)
+    }
+}
+
+/// Appends a line to island.log next to the history, for debugging.
+func log(_ line: String) {
+    let dir = ProcessInfo.processInfo.environment["ISLAND_STATE_DIR"]
+        ?? (NSHomeDirectory() as NSString).appendingPathComponent(".local/state/notch")
+    let url = URL(fileURLWithPath: dir).appendingPathComponent("island.log")
+    let text = "\(ISO8601DateFormatter().string(from: Date())) \(line)\n"
+    if let handle = try? FileHandle(forWritingTo: url) {
+        handle.seekToEndOfFile()
+        handle.write(Data(text.utf8))
+        try? handle.close()
+    } else {
+        try? Data(text.utf8).write(to: url)
     }
 }
