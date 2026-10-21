@@ -1,0 +1,158 @@
+# notch-island
+
+A Dynamic Island for the Mac. Messages, agent status and Spotify drop out of
+the notch as a black island, and anything that can run a shell command can
+send one:
+
+```sh
+notch "Tests passed" -b "412 passed in 2m 14s" -s "Claude · api" -i checkmark.circle.fill -c green
+```
+
+<p align="center">
+  <img src="docs/screenshots/message-success.png" width="428" alt="A 'Tests passed' banner below the notch">
+</p>
+
+It was built for coding agents: they finish, fail or get stuck while you're in
+another window, and a banner from the notch is hard to miss without being a
+full macOS notification. Every message is kept, so you can catch up from the
+inbox later.
+
+## What it does
+
+**Messages from any program.** `notch` shows a banner with an icon, title, an
+optional second line and a small source label. Banners queue, hide after 5
+seconds, pause while hovered, and can open a URL or run a command when clicked.
+
+**T3 Code threads that need you.** If T3 Code is installed,
+Island watches it and announces each thread that finishes, fails, asks a
+question or waits for approval, with the model and how long the turn took. It
+stays quiet when you're already looking at that thread in T3.
+
+<p align="center">
+  <img src="docs/screenshots/t3-finished.png" width="428" alt="T3 thread finished banner">
+  <img src="docs/screenshots/t3-question.png" width="428" alt="T3 thread asking a question">
+  <img src="docs/screenshots/t3-failed.png" width="428" alt="T3 thread failed">
+</p>
+
+**An inbox.** Threads still waiting on you, and your recent messages. Click a
+row to open it.
+
+<p align="center">
+  <img src="docs/screenshots/inbox.png" width="428" alt="Inbox with waiting threads and recent messages">
+</p>
+
+**Spotify.** Cover art, a seekable progress bar and playback controls.
+
+<p align="center">
+  <img src="docs/screenshots/spotify.png" width="428" alt="Spotify now-playing panel">
+</p>
+
+On a Mac with a notch the island grows out of it; on other screens it grows out
+of the top edge. It appears on whichever screen the mouse is on.
+
+## Install
+
+Needs macOS 14 or later and Swift 5.9+ (Xcode or the Command Line Tools).
+
+```sh
+git clone https://github.com/<owner>/notch-island
+cd notch-island
+make install
+```
+
+This builds `Island.app` into `~/Applications`, links the `notch` CLI into
+`~/.local/bin` (put that on your `PATH`), and adds a login item so Island runs
+in the background. `make uninstall` removes all three.
+
+The first time the Spotify panel is used, macOS asks to let Island control
+Spotify.
+
+## Sending messages
+
+```sh
+notch TITLE [BODY] [options]
+```
+
+| Option | |
+|---|---|
+| `-b, --body TEXT` | Second line, wraps to two lines |
+| `-s, --source TEXT` | Small label top-right, e.g. `Claude · api` |
+| `-i, --icon NAME` | [SF Symbol](https://developer.apple.com/sf-symbols/) name |
+| `-a, --app NAME` | Use an app's icon, e.g. `Slack` |
+| `--image PATH` | Use an image file |
+| `-c, --color COLOR` | `red orange yellow green mint teal blue indigo purple pink gray` or `#RRGGBB` |
+| `-t, --time SECONDS` | How long it stays (default 5) |
+| `--sticky` | Stay until clicked or dismissed |
+| `-o, --open URL\|PATH` | Open on click |
+| `-r, --run COMMAND` | Run a shell command on click |
+| `--sound NAME` | System sound: `Glass`, `Ping`, `Submarine`, … |
+| `--json JSON` | All of the above as JSON; `--json -` reads stdin |
+| `--dismiss` | Hide the banner on screen now |
+| `--inbox` | Open or close the inbox |
+| `--spotify` | Open or close the Spotify panel |
+
+From a program, `--json` is easiest:
+
+```sh
+echo '{"title": "Backup done", "body": "38 GB in 12m", "icon": "externaldrive.fill", "color": "teal"}' | notch --json -
+```
+
+History is kept in `~/.local/state/notch/history.jsonl`, one JSON object per
+line.
+
+## Coding agents
+
+`integrations/agents/notch/SKILL.md` is an [agent skill](https://docs.claude.com/en/docs/claude-code/skills)
+that tells an agent when to notify you and how. Link it into your skills folder:
+
+```sh
+ln -s "$PWD/integrations/agents/notch" ~/.claude/skills/notch
+```
+
+## Status bars
+
+Island keeps two counts: threads waiting on you, and messages you haven't seen
+in the inbox. On every change it writes them to
+`~/.local/state/notch/status.json` and, if [SketchyBar](https://github.com/FelixKratz/SketchyBar)
+is installed, fires its `island_update` event with `WAITING` and `UNREAD`.
+
+For SketchyBar there's a ready-made bell and Spotify item. Source it from your
+`sketchybarrc` after your other right-side items:
+
+```sh
+ISLAND_DIR="/path/to/notch-island/integrations/sketchybar"
+source "$ISLAND_DIR/island.sh"
+```
+
+The bell is orange with a count while threads wait on you and white when there
+are unseen messages; clicking it opens the inbox. The Spotify items show the
+track while it plays and open the player when clicked. The icons need a
+[Nerd Font](https://www.nerdfonts.com); see the top of `island.sh` to change
+them.
+
+## How the T3 integration works
+
+T3 Code has no public API for thread status, so Island reads its local state
+database (`~/.t3/userdata/statev2.sqlite`) read-only every 4 seconds. It skips
+archived, settled, snoozed and subagent threads. Because these are T3's
+internal tables, a T3 update can change them; if that happens Island stops
+reporting T3 threads rather than failing.
+
+## Development
+
+```sh
+make run                          # debug build in the foreground
+ISLAND_SLOWMO=8 make run          # slow animations down 8x
+./scripts/screenshots.sh          # regenerate docs/screenshots from demo data
+```
+
+| Variable | |
+|---|---|
+| `ISLAND_STATE_DIR` | Where history and status live (default `~/.local/state/notch`) |
+| `ISLAND_T3_DB` | T3 database to watch |
+| `ISLAND_ANNOUNCE_EXISTING=1` | Announce threads already waiting at startup |
+| `ISLAND_SLOWMO` | Multiply animation durations |
+
+## License
+
+MIT
