@@ -26,9 +26,7 @@ are doing as it happens. While any thread is working or waiting on you, the
 notch grows small wings: a spinner with how many are working on the left, and
 how many need you (orange) or have finished unread (green) on the right. Click
 or hover them for the full list, with each thread's state, project, model and
-running time; click a thread to open it in T3. Opened from the keyboard
-(Caps Lock then 2), ↑ ↓ move through the list and ⏎ opens the highlighted
-thread. (`notch --agents` opens the list directly. Banners for finished
+running time; click a thread to open it in T3. (`notch --agents` opens the list directly. Banners for finished
 threads are off by default; set `"t3Banners": true` in the config to get them
 too.)
 
@@ -97,9 +95,12 @@ needs no Accessibility permission; other key remaps are kept. If you've set
 Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Island
 follows that too when it's a right-side modifier (built-in keyboards don't
 have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. While it's open
-from Caps Lock, **1** joins your next call (or opens the calendar), **2** opens the agents list, and **3** plays or
+from Caps Lock, **1** opens your calendar, **2** opens the agents list, and **3** plays or
 pauses Spotify; hold Caps Lock and press the number, or tap one then the other.
-The number keys are only taken while the overview is open. **Esc** closes the
+Both lists open with the first row highlighted: ↑ ↓ move, ⏎ opens it (the
+thread in T3, or the event's call, else the event in Calendar), so joining your
+next call is Caps Lock, 1, ⏎. The number and arrow keys are only taken while
+the island is open from the keyboard. **Esc** closes the
 overview or any panel (banners leave Esc to the app you're typing in). To use a different
 key, bind `notch --home` in Raycast, skhd or similar instead.
 

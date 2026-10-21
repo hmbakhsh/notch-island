@@ -82,7 +82,7 @@ final class Island {
             self?.toggle(.inbox)
         }
         center.addObserver(forName: calendarName, object: nil, queue: .main) { [weak self] _ in
-            self?.toggle(.calendar)
+            self?.toggle(.calendar, keyboard: true)
         }
         center.addObserver(forName: messageName, object: nil, queue: .main) { [weak self] note in
             guard let json = note.userInfo?["json"] as? String,
@@ -135,7 +135,7 @@ final class Island {
 
     /// keyboard: opened by a key, so the panel takes its list keys (↑ ↓ ⏎).
     private func toggle(_ panel: Panel, keyboard: Bool = false) {
-        pendingListKeys = keyboard && panel == .agents
+        pendingListKeys = keyboard && (panel == .agents || panel == .calendar)
         if openPanel == panel || (panel == .home && openPanel != nil) {
             // The trigger key closes whatever panel is open.
             close()
@@ -167,9 +167,9 @@ final class Island {
     /// Loads what a panel needs, then hands back its content. Calendar waits
     /// for the permission prompt the first time.
     private func content(for panel: Panel, _ done: @escaping (Content) -> Void) {
-        if panel != .agents {
+        if panel != .agents && panel != .calendar {
             Trigger.captureList(nil)
-            state.selectedThread = nil
+            state.selected = nil
         }
         switch panel {
         case .player:
@@ -180,18 +180,14 @@ final class Island {
             updateBar()
             done(.inbox(height: InboxLayout.height(waiting: watcher.waiting.count, recent: history.entries.count)))
         case .calendar:
+            let keys = takeListKeys()
             agenda.refresh { [weak self] in
                 guard let self else { return }
+                self.state.selected = keys ? self.agenda.events.first?.id : nil
                 done(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
             }
         case .agents:
-            if pendingListKeys {
-                pendingListKeys = false
-                state.selectedThread = AgentsView.order(watcher).first
-                Trigger.captureList { [weak self] key in self?.pressListKey(key) }
-            } else {
-                state.selectedThread = nil
-            }
+            state.selected = takeListKeys() ? AgentsView.order(watcher).first : nil
             done(.agents(height: AgentsView.height(watcher)))
         case .home:
             agenda.reloadIfAllowed()
@@ -203,32 +199,46 @@ final class Island {
         }
     }
 
-    /// ↑ ↓ move through the agents list; ⏎ opens the highlighted thread.
+    /// Claims ↑ ↓ ⏎ for the panel being opened, if it was opened by a key.
+    private func takeListKeys() -> Bool {
+        let keys = pendingListKeys
+        pendingListKeys = false
+        Trigger.captureList(keys ? { [weak self] key in self?.pressListKey(key) } : nil)
+        return keys
+    }
+
+    /// ↑ ↓ move through the agents or calendar list; ⏎ opens the highlighted
+    /// row (the thread in T3, or the event's call or Calendar entry).
     private func pressListKey(_ key: Trigger.ListKey) {
-        guard case .agents = state.content, state.open else { return }
-        let order = AgentsView.order(watcher)
+        guard state.open else { return }
+        let order: [String]
+        switch state.content {
+        case .agents: order = AgentsView.order(watcher)
+        case .calendar: order = agenda.events.map(\.id)
+        default: return
+        }
         guard !order.isEmpty else { return }
-        let index = state.selectedThread.flatMap { order.firstIndex(of: $0) }
+        let index = state.selected.flatMap { order.firstIndex(of: $0) }
         switch key {
-        case .up: state.selectedThread = order[max((index ?? 0) - 1, 0)]
-        case .down: state.selectedThread = order[min((index ?? -1) + 1, order.count - 1)]
+        case .up: state.selected = order[max((index ?? 0) - 1, 0)]
+        case .down: state.selected = order[min((index ?? -1) + 1, order.count - 1)]
         case .open:
-            T3.open(thread: state.selectedThread ?? order[0])
+            let id = state.selected ?? order[0]
+            if case .calendar = state.content {
+                if let event = agenda.events.first(where: { $0.id == id }) { NSWorkspace.shared.open(event.openURL) }
+            } else {
+                T3.open(thread: id)
+            }
             close()
         }
     }
 
-    /// 1: join the next call, or open the calendar. 2: agents. 3: play/pause.
+    /// 1: calendar. 2: agents. 3: play/pause. Lists open with ↑ ↓ ⏎.
     private func pressNumber(_ n: Int) {
         guard case .home = state.content, state.open else { return }
         switch n {
         case 1:
-            if let url = agenda.events.first?.joinURL {
-                NSWorkspace.shared.open(url)
-                close()
-            } else {
-                toggle(.calendar)
-            }
+            toggle(.calendar, keyboard: true)
         case 2:
             toggle(.agents, keyboard: true)
         case 3:

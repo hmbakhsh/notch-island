@@ -39,8 +39,8 @@ final class IslandState: ObservableObject {
     @Published var content = Content.player
     /// Opened from the keyboard: number keys act on the overview's tiles.
     @Published var keyboard = false
-    /// The thread highlighted with the arrow keys in the agents list.
-    @Published var selectedThread: String?
+    /// The row highlighted with the arrow keys (a thread or an event id).
+    @Published var selected: String?
     /// Agents working or waiting: shown as wings beside the notch while closed.
     @Published var live: LiveCounts?
 
@@ -121,9 +121,9 @@ struct IslandView: View {
         case .inbox:
             InboxView(history: history, watcher: watcher, onOpenThread: onOpenThread, onOpenEntry: onOpenEntry)
         case .calendar:
-            AgendaView(agenda: agenda, onOpen: onOpenURL)
+            AgendaView(agenda: agenda, selected: state.selected, onOpen: onOpenURL)
         case .agents:
-            AgentsView(watcher: watcher, selected: state.selectedThread, onOpen: onOpenAgent)
+            AgentsView(watcher: watcher, selected: state.selected, onOpen: onOpenAgent)
         case .home:
             HomeView(
                 agenda: agenda, player: player, watcher: watcher, history: history,

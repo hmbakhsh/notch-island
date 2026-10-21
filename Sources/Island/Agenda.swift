@@ -13,8 +13,15 @@ struct AgendaEvent: Identifiable {
     /// Location, or the meeting service when the location is just a link.
     let detail: String?
     let joinURL: URL?
+    /// Calendar.app's link to this event.
+    let calendarURL: URL?
 
     var isNow: Bool { start <= Date() && end > Date() }
+
+    /// What opening the event does: join the call, or show it in Calendar.
+    var openURL: URL {
+        joinURL ?? calendarURL ?? URL(fileURLWithPath: "/System/Applications/Calendar.app")
+    }
 }
 
 final class Agenda: ObservableObject {
@@ -108,7 +115,10 @@ final class Agenda: ObservableObject {
             end: e.endDate,
             color: Color(cgColor: e.calendar.cgColor),
             detail: detail,
-            joinURL: link)
+            joinURL: link,
+            calendarURL: e.eventIdentifier
+                .flatMap { $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) }
+                .flatMap { URL(string: "ical://ekevent/\($0)?method=show&options=more") })
     }
 
     private static func joinLink(in fields: [String?]) -> URL? {
@@ -177,6 +187,8 @@ enum AgendaLayout {
 
 struct AgendaView: View {
     @ObservedObject var agenda: Agenda
+    /// Highlighted with the arrow keys.
+    let selected: String?
     let onOpen: (URL) -> Void
 
     var body: some View {
@@ -193,7 +205,7 @@ struct AgendaView: View {
                 ForEach(days, id: \.self) { day in
                     SectionHeader(text: Calendar.current.isDateInToday(day) ? "Today" : "Tomorrow")
                     ForEach(agenda.events.filter { Calendar.current.isDate($0.start, inSameDayAs: day) }) { event in
-                        EventRow(event: event, onOpen: onOpen)
+                        EventRow(event: event, selected: event.id == selected, onOpen: onOpen)
                     }
                 }
             }
@@ -220,6 +232,7 @@ struct AgendaView: View {
 
 private struct EventRow: View {
     let event: AgendaEvent
+    let selected: Bool
     let onOpen: (URL) -> Void
     @State private var hovered = false
 
@@ -262,14 +275,10 @@ private struct EventRow: View {
             .frame(height: AgendaLayout.rowHeight)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(hovered ? 0.08 : event.isNow ? 0.05 : 0)))
+                    .fill(Color.white.opacity(selected ? 0.12 : hovered ? 0.08 : event.isNow ? 0.05 : 0)))
             .contentShape(Rectangle())
             .onHover { hovered = $0 }
-            .onTapGesture {
-                // Calls open their meeting link. Calendar.app has no public
-                // link to one event, so anything else just opens the app.
-                onOpen(event.joinURL ?? URL(fileURLWithPath: "/System/Applications/Calendar.app"))
-            }
+            .onTapGesture { onOpen(event.openURL) }
         }
     }
 
