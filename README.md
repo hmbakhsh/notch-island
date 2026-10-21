@@ -58,8 +58,11 @@ or an audio file to play one anyway, or
 `"deviceAlerts": false` to turn it off. `notch --preview-device "AirPods Pro"`
 shows it without connecting anything.
 
-**An inbox.** Threads still waiting on you, and your recent messages. Click a
-row to open it.
+**Notifications.** Everything that reached the island, grouped: a section per
+mirrored app (Slack) with one row per channel or DM from the last day, showing
+the latest message and how many came in, then everything else. Click a row to
+open it (Slack opens on the right workspace; Slack doesn't store which channel
+a notification came from).
 
 <p align="center">
   <img src="docs/screenshots/inbox.png" width="428" alt="Inbox with waiting threads and recent messages">
@@ -78,7 +81,7 @@ out-of-office events are hidden. Open it with `notch --calendar`, e.g. from a
 status bar item.
 
 **Hover the notch** (or press Caps Lock, see below) for an overview: your next
-event (with Join), your agents and Spotify, side by side. Click a tile to open
+event (with Join), your agents, Spotify and your latest notification. Click a tile to open
 it; move away to close.
 
 On a Mac with a notch the island grows out of it; on other screens it grows out
@@ -126,7 +129,7 @@ Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Isla
 follows that too when it's a right-side modifier (built-in keyboards don't
 have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. While it's open
 from Caps Lock, **1** opens your calendar, **2** opens the agents list, and **3** plays or
-pauses Spotify; hold Caps Lock and press the number, or tap one then the other.
+pauses Spotify, and **4** opens notifications; hold Caps Lock and press the number, or tap one then the other.
 Both lists open with the first row highlighted: ↑ ↓ move, ⏎ opens it (the
 thread in T3, or the event's call, else the event in Calendar), so joining your
 next call is Caps Lock, 1, ⏎. The number and arrow keys are only taken while
@@ -155,7 +158,7 @@ notch TITLE [BODY] [options]
 | `--sound NAME` | System sound: `Glass`, `Ping`, `Submarine`, … |
 | `--json JSON` | All of the above as JSON; `--json -` reads stdin |
 | `--dismiss` | Hide the banner on screen now |
-| `--inbox` | Open or close the inbox |
+| `--inbox` | Open or close notifications |
 | `--spotify` | Open or close the Spotify panel |
 | `--calendar` | Open or close upcoming calendar events |
 | `--home` | Open or close the overview |

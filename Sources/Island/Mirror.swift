@@ -30,6 +30,7 @@ final class NotificationMirror {
     func replayLatest() {
         let after = (lastID ?? 0) - 500
         DispatchQueue.global(qos: .utility).async {
+            if let last = Self.fetch(after: after, apps: self.apps)?.rows.last { Self.describe(last.data) }
             guard let last = Self.fetch(after: after, apps: self.apps)?.rows.last,
                   let message = Self.message(app: last.app, data: last.data)
             else {
@@ -67,6 +68,24 @@ final class NotificationMirror {
         }
     }
 
+    /// Logs the shape of a stored notification (keys, and the values of any
+    /// id-like fields), to see what an app includes for deep links.
+    private static func describe(_ data: Data) {
+        guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return }
+        log("notification keys: \(plist.keys.sorted())")
+        if let request = plist["req"] as? [String: Any] {
+            log("request keys: \(request.keys.sorted())")
+            for (key, value) in request where !["titl", "subt", "body"].contains(key) {
+                var shown = "\(value)"
+                if let data = value as? Data,
+                   let inner = try? PropertyListSerialization.propertyList(from: data, format: nil) {
+                    shown = "plist \(inner)"
+                }
+                log("  \(key) = \(shown.prefix(400))")
+            }
+        }
+    }
+
     /// The notification's title, subtitle and body from its stored property list.
     private static func message(app: String, data: Data) -> Message? {
         guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
@@ -90,6 +109,12 @@ final class NotificationMirror {
         }
         m.image = appURL.map { "app:" + $0.path }
         m.open = appURL?.path
+        // Slack's notification id starts with the workspace ("T0B2…_<ts>"); the
+        // channel id isn't stored, so open Slack on the right workspace.
+        if app == "com.tinyspeck.slackmacgap", let id = request["iden"] as? String,
+           id.hasPrefix("T"), let team = id.split(separator: "_").first {
+            m.open = "slack://open?team=\(team)"
+        }
         m.seconds = 5
         m.mirroredFrom = app
         return m

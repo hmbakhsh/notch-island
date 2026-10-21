@@ -125,7 +125,7 @@ struct IslandView: View {
                 .onTapGesture(perform: onMessageTap)
                 .onHover(perform: onMessageHover)
         case .inbox:
-            InboxView(history: history, watcher: watcher, onOpenThread: onOpenThread, onOpenEntry: onOpenEntry)
+            InboxView(history: history, selected: state.selected, onOpenEntry: onOpenEntry)
         case .calendar:
             AgendaView(agenda: agenda, selected: state.selected, onOpen: onOpenURL)
         case .agents:

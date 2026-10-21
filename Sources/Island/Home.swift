@@ -4,7 +4,7 @@ import SwiftUI
 /// What hovering the notch shows: one tile each for the next event, the inbox
 /// and Spotify. Clicking a tile grows the island into that panel.
 enum HomeLayout {
-    static let height: CGFloat = 122
+    static let height: CGFloat = 206
 }
 
 struct HomeView: View {
@@ -18,15 +18,22 @@ struct HomeView: View {
     let join: (URL) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Tile(icon: "calendar", label: nextEvent?.isNow == true ? "Now" : "Next", key: keyboard ? 1 : nil) { open(.calendar) } content: {
-                calendar
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Tile(icon: "calendar", label: nextEvent?.isNow == true ? "Now" : "Next", key: keyboard ? 1 : nil) { open(.calendar) } content: {
+                    calendar
+                }
+                Tile(icon: "sparkles", label: "Agents", key: keyboard ? 2 : nil) { open(.agents) } content: {
+                    agents
+                }
             }
-            Tile(icon: "sparkles", label: "Agents", key: keyboard ? 2 : nil) { open(.agents) } content: {
-                agents
-            }
-            Tile(icon: "music.note", label: "Spotify", key: keyboard ? 3 : nil) { open(.player) } content: {
-                spotify
+            HStack(spacing: 8) {
+                Tile(icon: "music.note", label: "Spotify", key: keyboard ? 3 : nil) { open(.player) } content: {
+                    spotify
+                }
+                Tile(icon: "bell.fill", label: "Notifications", key: keyboard ? 4 : nil) { open(.inbox) } content: {
+                    notifications
+                }
             }
         }
         .padding(.horizontal, 12)
@@ -76,6 +83,29 @@ struct HomeView: View {
                     secondary("\(watcher.waiting.count) done", color: .green)
                 }
             }
+        }
+    }
+
+    /// Unread count, and the latest notification (channel and message for Slack).
+    @ViewBuilder private var notifications: some View {
+        if let latest = history.entries.first {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    primary(latest.message.title, lines: 1)
+                    secondary(latest.message.body ?? latest.message.source ?? "")
+                }
+                if history.unread > 0 {
+                    Spacer(minLength: 2)
+                    Text("\(history.unread)")
+                        .font(.system(size: 11, weight: .bold).monospacedDigit())
+                        .foregroundStyle(.black)
+                        .frame(minWidth: 20, minHeight: 20)
+                        .padding(.horizontal, 2)
+                        .background(Capsule().fill(Color.white))
+                }
+            }
+        } else {
+            primary("All clear")
         }
     }
 

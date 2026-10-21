@@ -272,59 +272,113 @@ final class T3Watcher: ObservableObject {
     }
 }
 
-// MARK: - Inbox panel
+// MARK: - Notifications panel
 
-enum InboxLayout {
-    static let maxWaiting = 4
-    static let maxRecent = 5
-    static let rowHeight: CGFloat = 44
-    static let headerHeight = SectionHeader.height
-
-    static func height(waiting: Int, recent: Int) -> CGFloat {
-        let w = min(waiting, maxWaiting), r = min(max(recent, 1), maxRecent)
-        return 8 + (w > 0 ? headerHeight + CGFloat(w) * rowHeight + 6 : 0) + headerHeight + CGFloat(r) * rowHeight + 14
-    }
+/// One row in the notifications panel: a single message, or for mirrored
+/// apps (Slack) the latest message in a channel with how many came in.
+struct NotificationGroup: Identifiable {
+    let latest: Entry
+    let count: Int
+    var id: String { latest.id.uuidString }
 }
 
+enum InboxLayout {
+    static let rowHeight: CGFloat = 44
+    static let maxPerApp = 5
+    static let maxOther = 4
+    static let maxRows = 8
+}
+
+/// Notifications, grouped: a section per mirrored app (Slack) with a row per
+/// channel from the last day, then everything else.
 struct InboxView: View {
     @ObservedObject var history: History
-    @ObservedObject var watcher: T3Watcher
-    let onOpenThread: (String) -> Void
+    /// Highlighted with the arrow keys.
+    let selected: String?
     let onOpenEntry: (Entry) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !watcher.waiting.isEmpty {
-                SectionHeader(text: "Waiting on you", count: watcher.waiting.count)
-                ForEach(watcher.waiting.prefix(InboxLayout.maxWaiting)) { thread in
-                    Row(
-                        leading: AnyView(MessageIcon(message: thread.message, size: 28)),
-                        title: thread.title,
-                        detail: thread.status,
-                        time: relative(isoDate(thread.since)),
-                        action: { onOpenThread(thread.id) })
-                }
-                Spacer().frame(height: 6)
-            }
-            SectionHeader(text: "Recent")
-            if history.entries.isEmpty {
+            let sections = Self.sections(history)
+            if sections.isEmpty {
+                SectionHeader(text: "Notifications")
                 Text("Nothing yet")
                     .font(.system(size: 12.5))
                     .foregroundStyle(.white.opacity(0.4))
+                    .padding(.horizontal, 8)
                     .frame(height: InboxLayout.rowHeight)
             }
-            ForEach(history.entries.prefix(InboxLayout.maxRecent)) { entry in
-                Row(
-                    leading: AnyView(MessageIcon(message: entry.message, size: 28)),
-                    title: entry.message.title,
-                    detail: [entry.message.source, entry.message.body].compactMap { $0 }.joined(separator: " · "),
-                    time: relative(entry.date),
-                    action: { onOpenEntry(entry) })
+            ForEach(sections, id: \.title) { section in
+                SectionHeader(text: section.title)
+                ForEach(section.groups) { group in
+                    let message = group.latest.message
+                    Row(
+                        leading: AnyView(MessageIcon(message: message, size: 28)),
+                        title: message.title,
+                        detail: message.mirroredFrom == nil
+                            ? [message.source, message.body].compactMap { $0 }.joined(separator: " · ")
+                            : message.body ?? "",
+                        time: relative(group.latest.date),
+                        badge: group.count > 1 ? group.count : nil,
+                        selected: group.id == selected,
+                        action: { onOpenEntry(group.latest) })
+                }
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
+    }
+
+    static func sections(_ history: History) -> [(title: String, groups: [NotificationGroup])] {
+        let dayAgo = Date().addingTimeInterval(-86400)
+        var mirrored: [String: [String: [Entry]]] = [:]  // app → channel → entries, newest first
+        var appOrder: [String] = []
+        var other: [Entry] = []
+        for entry in history.entries {
+            let m = entry.message
+            guard m.mirroredFrom != nil else {
+                if other.count < InboxLayout.maxOther { other.append(entry) }
+                continue
+            }
+            guard entry.date > dayAgo else { continue }
+            let app = m.source?.components(separatedBy: " · ").first ?? "Apps"
+            let channel = (m.source ?? "") + "|" + m.title
+            if mirrored[app] == nil { appOrder.append(app) }
+            mirrored[app, default: [:]][channel, default: []].append(entry)
+        }
+
+        var out: [(String, [NotificationGroup])] = []
+        var left = InboxLayout.maxRows
+        for app in appOrder where left > 0 {
+            let groups = (mirrored[app] ?? [:]).values
+                .map { NotificationGroup(latest: $0[0], count: $0.count) }
+                .sorted { $0.latest.date > $1.latest.date }
+                .prefix(min(InboxLayout.maxPerApp, left))
+            out.append((app, Array(groups)))
+            left -= groups.count
+        }
+        if !other.isEmpty, left > 0 {
+            let groups = other.prefix(left).map { NotificationGroup(latest: $0, count: 1) }
+            out.append((appOrder.isEmpty ? "Recent" : "Other", groups))
+        }
+        return out.map { (title: $0.0, groups: $0.1) }
+    }
+
+    /// Rows top to bottom, as the arrow keys walk them.
+    static func order(_ history: History) -> [String] {
+        sections(history).flatMap { $0.groups.map(\.id) }
+    }
+
+    static func entry(_ id: String, in history: History) -> Entry? {
+        history.entries.first { $0.id.uuidString == id }
+    }
+
+    static func height(_ history: History) -> CGFloat {
+        let sections = sections(history)
+        guard !sections.isEmpty else { return 8 + SectionHeader.height + InboxLayout.rowHeight + 14 }
+        let rows = sections.reduce(0) { $0 + $1.groups.count }
+        return 8 + CGFloat(sections.count) * SectionHeader.height + CGFloat(rows) * InboxLayout.rowHeight + 14
     }
 }
 
@@ -333,6 +387,8 @@ private struct Row: View {
     let title: String
     let detail: String
     let time: String
+    var badge: Int? = nil
+    var selected = false
     let action: () -> Void
     @State private var hovered = false
 
@@ -351,6 +407,14 @@ private struct Row: View {
             }
             .lineLimit(1)
             Spacer(minLength: 8)
+            if let badge {
+                Text("\(badge)")
+                    .font(.system(size: 10.5, weight: .bold).monospacedDigit())
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 5)
+                    .frame(minWidth: 18, minHeight: 16)
+                    .background(Capsule().fill(Color.white.opacity(0.8)))
+            }
             Text(time)
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.35))
@@ -359,7 +423,7 @@ private struct Row: View {
         .frame(height: InboxLayout.rowHeight)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(hovered ? 0.08 : 0)))
+                .fill(Color.white.opacity(selected ? 0.12 : hovered ? 0.08 : 0)))
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .onTapGesture(perform: action)

@@ -81,7 +81,7 @@ final class Island {
             self?.toggle(.player)
         }
         center.addObserver(forName: inboxName, object: nil, queue: .main) { [weak self] _ in
-            self?.toggle(.inbox)
+            self?.toggle(.inbox, keyboard: true)
         }
         center.addObserver(forName: calendarName, object: nil, queue: .main) { [weak self] _ in
             self?.toggle(.calendar, keyboard: true)
@@ -153,7 +153,7 @@ final class Island {
 
     /// keyboard: opened by a key, so the panel takes its list keys (↑ ↓ ⏎).
     private func toggle(_ panel: Panel, keyboard: Bool = false) {
-        pendingListKeys = keyboard && (panel == .agents || panel == .calendar)
+        pendingListKeys = keyboard && (panel == .agents || panel == .calendar || panel == .inbox)
         if openPanel == panel || (panel == .home && openPanel != nil) {
             // The trigger key closes whatever panel is open.
             close()
@@ -185,7 +185,7 @@ final class Island {
     /// Loads what a panel needs, then hands back its content. Calendar waits
     /// for the permission prompt the first time.
     private func content(for panel: Panel, _ done: @escaping (Content) -> Void) {
-        if panel != .agents && panel != .calendar {
+        if panel != .agents && panel != .calendar && panel != .inbox {
             Trigger.captureList(nil)
             state.selected = nil
         }
@@ -196,7 +196,8 @@ final class Island {
         case .inbox:
             history.markRead()
             updateBar()
-            done(.inbox(height: InboxLayout.height(waiting: watcher.waiting.count, recent: history.entries.count)))
+            state.selected = takeListKeys() ? InboxView.order(history).first : nil
+            done(.inbox(height: InboxView.height(history)))
         case .calendar:
             let keys = takeListKeys()
             agenda.refresh { [weak self] in
@@ -233,6 +234,7 @@ final class Island {
         switch state.content {
         case .agents: order = AgentsView.order(watcher)
         case .calendar: order = agenda.events.map(\.id)
+        case .inbox: order = InboxView.order(history)
         default: return
         }
         guard !order.isEmpty else { return }
@@ -244,6 +246,8 @@ final class Island {
             let id = state.selected ?? order[0]
             if case .calendar = state.content {
                 if let event = agenda.events.first(where: { $0.id == id }) { NSWorkspace.shared.open(event.openURL) }
+            } else if case .inbox = state.content {
+                InboxView.entry(id, in: history)?.message.perform()
             } else {
                 T3.open(thread: id)
             }
@@ -251,7 +255,7 @@ final class Island {
         }
     }
 
-    /// 1: calendar. 2: agents. 3: play/pause. Lists open with ↑ ↓ ⏎.
+    /// 1: calendar. 2: agents. 3: play/pause. 4: notifications. Lists open with ↑ ↓ ⏎.
     private func pressNumber(_ n: Int) {
         guard case .home = state.content, state.open else { return }
         switch n {
@@ -261,6 +265,8 @@ final class Island {
             toggle(.agents, keyboard: true)
         case 3:
             player.send("playpause")
+        case 4:
+            toggle(.inbox, keyboard: true)
         default:
             break
         }

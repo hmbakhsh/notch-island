@@ -99,7 +99,7 @@ enum Trigger {
         numberKeys = []
         numberAction = handler
         guard handler != nil else { return }
-        for (n, key) in [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3].enumerated() {
+        for (n, key) in [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4].enumerated() {
             var ref: EventHotKeyRef?
             let id = EventHotKeyID(signature: signature, id: UInt32(11 + n))
             if RegisterEventHotKey(UInt32(key), 0, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
