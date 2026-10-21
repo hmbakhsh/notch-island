@@ -13,11 +13,24 @@ enum Trigger {
     private static var numberAction: ((Int) -> Void)?
     private static var hotKey: EventHotKeyRef?
     private static var numberKeys: [EventHotKeyRef] = []
+    private static var escapeAction: (() -> Void)?
+    private static var escapeKey: EventHotKeyRef?
+    private static var handlerInstalled = false
     private static var lastPress = Date.distantPast
 
     static func install(_ action: @escaping () -> Void) {
         remapCapsLock()
         Self.action = action
+        installHandler()
+        let id = EventHotKeyID(signature: signature, id: 1)
+        let status = RegisterEventHotKey(UInt32(kVK_F18), 0, id, GetApplicationEventTarget(), 0, &hotKey)
+        log("Caps Lock trigger registered, status \(status)")
+    }
+
+    /// One Carbon handler for every hot key Island registers.
+    private static func installHandler() {
+        guard !handlerInstalled else { return }
+        handlerInstalled = true
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let installed = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
             var id = EventHotKeyID()
@@ -28,9 +41,6 @@ enum Trigger {
             return noErr
         }, 1, &spec, nil, nil)
         log("hot key handler installed, status \(installed)")
-        let id = EventHotKeyID(signature: signature, id: 1)
-        let status = RegisterEventHotKey(UInt32(kVK_F18), 0, id, GetApplicationEventTarget(), 0, &hotKey)
-        log("Caps Lock trigger registered, status \(status)")
     }
 
     private static func pressed(_ id: UInt32) {
@@ -40,9 +50,23 @@ enum Trigger {
             defer { lastPress = now }
             guard now.timeIntervalSince(lastPress) > 0.3 else { return }
             action?()
+        } else if id == 20 {
+            escapeAction?()
         } else {
             numberAction?(Int(id) - 10)
         }
+    }
+
+    /// Captures Esc everywhere while the island is open, and gives it back as
+    /// soon as it closes.
+    static func captureEscape(_ handler: (() -> Void)?) {
+        if let escapeKey { UnregisterEventHotKey(escapeKey) }
+        escapeKey = nil
+        escapeAction = handler
+        guard handler != nil else { return }
+        installHandler()
+        let id = EventHotKeyID(signature: signature, id: 20)
+        RegisterEventHotKey(UInt32(kVK_Escape), 0, id, GetApplicationEventTarget(), 0, &escapeKey)
     }
 
     /// Captures 1, 2 and 3 everywhere while the island is open from the

@@ -94,7 +94,8 @@ have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. While it's o
 from Caps Lock, **1** joins your next call (or opens the calendar), **2** brings
 T3 forward when threads are waiting (or opens the inbox), and **3** plays or
 pauses Spotify; hold Caps Lock and press the number, or tap one then the other.
-The number keys are only taken while the overview is open. To use a different
+The number keys are only taken while the overview is open. **Esc** closes the
+overview or any panel (banners leave Esc to the app you're typing in). To use a different
 key, bind `notch --home` in Raycast, skhd or similar instead.
 
 ## Sending messages

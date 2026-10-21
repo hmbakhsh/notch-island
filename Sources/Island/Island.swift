@@ -343,6 +343,11 @@ final class Island {
 
         state.notch = notch
         state.content = content
+        // Esc closes panels and the overview. Banners leave it alone: they
+        // appear while you're typing, and Esc belongs to that app.
+        if case .message = content {} else {
+            Trigger.captureEscape { [weak self] in self?.close() }
+        }
         state.open = false
         state.showContent = false
         panel.orderFrontRegardless()
@@ -381,6 +386,7 @@ final class Island {
     private func close() {
         guard state.open else { return }
         releaseNumbers()
+        Trigger.captureEscape(nil)
         dismissTimer?.cancel()
         if let monitor = outsideClickMonitor {
             NSEvent.removeMonitor(monitor)
