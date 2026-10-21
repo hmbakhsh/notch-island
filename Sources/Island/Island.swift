@@ -198,7 +198,7 @@ final class Island {
             return
         }
         if let since = hoverSince {
-            if now.timeIntervalSince(since) > 0.2 {
+            if now.timeIntervalSince(since) > 0.15 {
                 hoverSince = nil
                 showHome()
             }
@@ -314,20 +314,20 @@ final class Island {
         state.open = false
         state.showContent = false
         panel.orderFrontRegardless()
-        withAnimation(.spring(response: 0.42 * slowmo, dampingFraction: 0.8)) { state.open = true }
-        withAnimation(.easeOut(duration: 0.22 * slowmo).delay(0.16 * slowmo)) { state.showContent = true }
+        withAnimation(.spring(response: 0.3 * slowmo, dampingFraction: 0.78)) { state.open = true }
+        withAnimation(.easeOut(duration: 0.14 * slowmo).delay(0.07 * slowmo)) { state.showContent = true }
     }
 
     /// Grows (or shrinks) the open island into other content without closing.
     private func morph(to content: Content) {
         let tallest = max(content.height, state.content.height)
         setFrame(contentHeight: tallest)
-        withAnimation(.easeIn(duration: 0.1 * slowmo)) { state.showContent = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1 * slowmo) { [weak self] in
+        withAnimation(.easeIn(duration: 0.07 * slowmo)) { state.showContent = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.07 * slowmo) { [weak self] in
             guard let self else { return }
-            withAnimation(.spring(response: 0.42 * slowmo, dampingFraction: 0.82)) { self.state.content = content }
-            withAnimation(.easeOut(duration: 0.22 * slowmo).delay(0.16 * slowmo)) { self.state.showContent = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5 * slowmo) {
+            withAnimation(.spring(response: 0.3 * slowmo, dampingFraction: 0.82)) { self.state.content = content }
+            withAnimation(.easeOut(duration: 0.14 * slowmo).delay(0.08 * slowmo)) { self.state.showContent = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4 * slowmo) {
                 if self.state.open, self.state.content.height == content.height {
                     self.setFrame(contentHeight: content.height)
                 }
@@ -351,11 +351,11 @@ final class Island {
             NSEvent.removeMonitor(monitor)
             outsideClickMonitor = nil
         }
-        withAnimation(.easeIn(duration: 0.1 * slowmo)) { state.showContent = false }
-        withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 1).delay(0.06 * slowmo)) {
+        withAnimation(.easeIn(duration: 0.07 * slowmo)) { state.showContent = false }
+        withAnimation(.spring(response: 0.26 * slowmo, dampingFraction: 1).delay(0.03 * slowmo)) {
             state.open = false
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45 * slowmo) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32 * slowmo) { [weak self] in
             guard let self, !self.state.open else { return }
             self.panel.orderOut(nil)
             self.busy = false

@@ -20,20 +20,28 @@ final class Player: ObservableObject {
         return min(max(p, 0), duration)
     }
 
+    /// Asks Spotify for its state off the main thread (it takes ~0.1s), so
+    /// panels can open straight away and fill in when the answer arrives.
     func refresh() {
         running = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
         guard running else {
             playing = false
             return
         }
-        let fields = run("""
-            tell application "Spotify"
-              if player state is stopped then return "stopped"
-              set t to current track
-              return (player state as text) & tab & name of t & tab & artist of t & tab & artwork url of t ¬
-                & tab & (duration of t as text) & tab & (player position as text)
-            end tell
-            """).components(separatedBy: "\t")
+        scripts.async {
+            let output = Self.run("""
+                tell application "Spotify"
+                  if player state is stopped then return "stopped"
+                  set t to current track
+                  return (player state as text) & tab & name of t & tab & artist of t & tab & artwork url of t ¬
+                    & tab & (duration of t as text) & tab & (player position as text)
+                end tell
+                """)
+            DispatchQueue.main.async { self.apply(output.components(separatedBy: "\t")) }
+        }
+    }
+
+    private func apply(_ fields: [String]) {
         guard fields.count == 6 else {
             playing = false
             return
@@ -51,18 +59,34 @@ final class Player: ObservableObject {
     }
 
     func send(_ command: String) {
-        run("tell application \"Spotify\" to \(command)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.refresh() }
+        // Flip the button now rather than after Spotify answers.
+        if command == "playpause" { playing.toggle() }
+        scripts.async {
+            Self.run("tell application \"Spotify\" to \(command)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.refresh() }
+        }
     }
 
     func seek(to seconds: Double) {
         send("set player position to \(Int(seconds))")
     }
 
+    /// One script at a time, off the main thread. NSAppleScript is main-thread
+    /// only, so this shells out to osascript instead.
+    private let scripts = DispatchQueue(label: "dev.notchisland.spotify")
+
     @discardableResult
-    private func run(_ source: String) -> String {
-        var error: NSDictionary?
-        return NSAppleScript(source: source)?.executeAndReturnError(&error).stringValue ?? ""
+    private static func run(_ source: String) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", source]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return "" }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .newlines)
     }
 
     private func loadArtwork(_ string: String) {
