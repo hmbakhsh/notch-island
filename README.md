@@ -51,6 +51,9 @@ Meet, Zoom, Teams, Whereby and Webex links; clicking a call joins it too. Declin
 out-of-office events are hidden. Open it with `notch --calendar`, e.g. from a
 status bar item.
 
+**Hover the notch** for an overview: your next event (with Join), the inbox
+and Spotify, side by side. Click a tile to open it; move away to close.
+
 On a Mac with a notch the island grows out of it; on other screens it grows out
 of the top edge. It appears on whichever screen the mouse is on.
 

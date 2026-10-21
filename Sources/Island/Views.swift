@@ -6,12 +6,14 @@ enum Content {
     case message(Message)
     case inbox(height: CGFloat)
     case calendar(height: CGFloat)
+    case home
 
     var height: CGFloat {
         switch self {
         case .player: return 168
         case .message(let m): return m.body == nil ? 60 : 82
         case .inbox(let height), .calendar(let height): return height
+        case .home: return HomeLayout.height
         }
     }
 }
@@ -40,6 +42,7 @@ struct IslandView: View {
     let onOpenThread: () -> Void
     let onOpenEntry: (Entry) -> Void
     let onOpenURL: (URL) -> Void
+    let onOpenPanel: (Island.Panel) -> Void
 
     var body: some View {
         let radius: CGFloat = state.open ? (state.content.height > 100 ? 30 : 24) : 10
@@ -78,6 +81,10 @@ struct IslandView: View {
             InboxView(history: history, watcher: watcher, onOpenThread: onOpenThread, onOpenEntry: onOpenEntry)
         case .calendar:
             AgendaView(agenda: agenda, onOpen: onOpenURL)
+        case .home:
+            HomeView(
+                agenda: agenda, player: player, watcher: watcher, history: history,
+                open: onOpenPanel, join: onOpenURL)
         }
     }
 }

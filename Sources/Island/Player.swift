@@ -7,6 +7,7 @@ final class Player: ObservableObject {
     @Published var title = ""
     @Published var artist = ""
     @Published var playing = false
+    @Published var running = false
     @Published var duration: Double = 0
     @Published var artwork: NSImage?
     @Published var tint = Color.white
@@ -20,7 +21,8 @@ final class Player: ObservableObject {
     }
 
     func refresh() {
-        guard !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty else {
+        running = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
+        guard running else {
             playing = false
             return
         }

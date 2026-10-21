@@ -30,6 +30,9 @@ final class Island {
     private var outsideClickMonitor: Any?
     private var closedByOutsideClickAt = Date.distantPast
     private var dismissTimer: DispatchWorkItem?
+    private var hoverTimer: Timer?
+    private var hoverSince: Date?
+    private var hoverLeftAt: Date?
 
     init() {
         panel = IslandPanel(
@@ -54,7 +57,8 @@ final class Island {
             onOpenURL: { [weak self] url in
                 NSWorkspace.shared.open(url)
                 self?.close()
-            }))
+            },
+            onOpenPanel: { [weak self] panel in self?.toggle(panel) }))
 
         let center = DistributedNotificationCenter.default()
         center.addObserver(forName: spotifyName, object: nil, queue: .main) { [weak self] _ in
@@ -82,6 +86,9 @@ final class Island {
         watcher.onNew = { [weak self] thread in self?.deliver(thread.message) }
         watcher.onChange = { [weak self] in self?.updateBar() }
         watcher.start()
+        hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            self?.checkHover()
+        }
         player.refresh()
         updateBar()
     }
@@ -96,13 +103,18 @@ final class Island {
         case .player: return .player
         case .inbox: return .inbox
         case .calendar: return .calendar
-        case .message: return nil
+        case .message, .home: return nil
         }
     }
 
     private func toggle(_ panel: Panel) {
         if openPanel == panel {
             close()
+        } else if case .home = state.content, state.open {
+            content(for: panel) { [weak self] content in
+                self?.morph(to: content)
+                self?.watchOutsideClicks()
+            }
         } else if Date().timeIntervalSince(closedByOutsideClickAt) < 0.4 {
             // A click on the bar item also counts as an outside click; that
             // click already closed us, so don't reopen.
@@ -116,25 +128,88 @@ final class Island {
     }
 
     private func show(_ panel: Panel) {
+        content(for: panel) { [weak self] content in
+            guard let self, !self.busy else { return }
+            self.present(content)
+            self.watchOutsideClicks()
+        }
+    }
+
+    /// Loads what a panel needs, then hands back its content. Calendar waits
+    /// for the permission prompt the first time.
+    private func content(for panel: Panel, _ done: @escaping (Content) -> Void) {
         switch panel {
         case .player:
             player.refresh()
-            present(.player)
+            done(.player)
         case .inbox:
             history.markRead()
             updateBar()
-            present(.inbox(height: InboxLayout.height(
-                waiting: watcher.waiting.count, recent: history.entries.count)))
+            done(.inbox(height: InboxLayout.height(waiting: watcher.waiting.count, recent: history.entries.count)))
         case .calendar:
-            // The first time, this waits for the calendar permission prompt.
             agenda.refresh { [weak self] in
-                guard let self, !self.busy else { return }
-                self.present(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
-                self.watchOutsideClicks()
+                guard let self else { return }
+                done(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
+            }
+        }
+    }
+
+    // MARK: Hover
+
+    /// Resting on the notch opens the overview; leaving it closes it again.
+    private func checkHover() {
+        let mouse = NSEvent.mouseLocation
+        let now = Date()
+
+        if case .home = state.content, state.open {
+            let inside = NSMouseInRect(mouse, islandFrame, false)
+                || panel.screen.map { NSMouseInRect(mouse, hotZone(on: $0), false) } == true
+            if inside {
+                hoverLeftAt = nil
+            } else if let left = hoverLeftAt {
+                if now.timeIntervalSince(left) > 0.3 { hoverLeftAt = nil; close() }
+            } else {
+                hoverLeftAt = now
             }
             return
         }
-        watchOutsideClicks()
+
+        guard !busy, NSEvent.pressedMouseButtons == 0,
+              let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }),
+              NSMouseInRect(mouse, hotZone(on: screen), false)
+        else {
+            hoverSince = nil
+            return
+        }
+        if let since = hoverSince {
+            if now.timeIntervalSince(since) > 0.2 {
+                hoverSince = nil
+                showHome()
+            }
+        } else {
+            hoverSince = now
+        }
+    }
+
+    private func showHome() {
+        agenda.reloadIfAllowed()
+        player.refresh()
+        hoverLeftAt = nil
+        present(.home)
+    }
+
+    /// The notch itself, or a strip at the top centre of screens without one.
+    private func hotZone(on screen: NSScreen) -> NSRect {
+        let notch = notchSize(of: screen)
+        let width = notch.height > 0 ? notch.width : 200
+        let height = max(notch.height, 4)
+        return NSRect(x: screen.frame.midX - width / 2, y: screen.frame.maxY - height, width: width, height: height + 1)
+    }
+
+    /// The visible island, without the panel's shadow margin.
+    private var islandFrame: NSRect {
+        let height = state.notch.height + state.content.height
+        return NSRect(x: panel.frame.midX - islandWidth / 2, y: panel.frame.maxY - height, width: islandWidth, height: height + 1)
     }
 
     private func watchOutsideClicks() {
@@ -224,6 +299,32 @@ final class Island {
         panel.orderFrontRegardless()
         withAnimation(.spring(response: 0.42 * slowmo, dampingFraction: 0.8)) { state.open = true }
         withAnimation(.easeOut(duration: 0.22 * slowmo).delay(0.16 * slowmo)) { state.showContent = true }
+    }
+
+    /// Grows (or shrinks) the open island into other content without closing.
+    private func morph(to content: Content) {
+        let tallest = max(content.height, state.content.height)
+        setFrame(contentHeight: tallest)
+        withAnimation(.easeIn(duration: 0.1 * slowmo)) { state.showContent = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1 * slowmo) { [weak self] in
+            guard let self else { return }
+            withAnimation(.spring(response: 0.42 * slowmo, dampingFraction: 0.82)) { self.state.content = content }
+            withAnimation(.easeOut(duration: 0.22 * slowmo).delay(0.16 * slowmo)) { self.state.showContent = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5 * slowmo) {
+                if self.state.open, self.state.content.height == content.height {
+                    self.setFrame(contentHeight: content.height)
+                }
+            }
+        }
+    }
+
+    /// Resizes the panel in place, keeping it pinned to the top of its screen.
+    private func setFrame(contentHeight: CGFloat) {
+        let height = state.notch.height + contentHeight + shadowRoom
+        var frame = panel.frame
+        frame.origin.y = frame.maxY - height
+        frame.size.height = height
+        panel.setFrame(frame, display: true)
     }
 
     private func close() {

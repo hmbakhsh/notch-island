@@ -46,7 +46,10 @@ final class Agenda: ObservableObject {
             done()
             return
         }
-        store.requestFullAccessToEvents { [weak self] _, _ in
+        // Island is a background app; bring it forward so the prompt shows.
+        NSApp.activate(ignoringOtherApps: true)
+        store.requestFullAccessToEvents { [weak self] granted, error in
+            NSLog("Island: calendar access granted=\(granted) error=\(String(describing: error))")
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.access = Self.currentAccess
@@ -54,6 +57,12 @@ final class Agenda: ObservableObject {
                 done()
             }
         }
+    }
+
+    /// Reloads only if access was already granted; never prompts.
+    func reloadIfAllowed() {
+        access = Self.currentAccess
+        reload()
     }
 
     func reload() {
