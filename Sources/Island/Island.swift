@@ -165,7 +165,35 @@ final class Island {
             agenda.reloadIfAllowed()
             player.refresh()
             homePinned = true
+            state.keyboard = Config.shared.capsLockTrigger == true
+            if state.keyboard { Trigger.captureNumbers { [weak self] n in self?.pressNumber(n) } }
             done(.home)
+        }
+    }
+
+    /// 1: join the next call, or open the calendar. 2: bring T3 forward if
+    /// threads are waiting, or open the inbox. 3: play/pause.
+    private func pressNumber(_ n: Int) {
+        guard case .home = state.content, state.open else { return }
+        switch n {
+        case 1:
+            if let url = agenda.events.first?.joinURL {
+                NSWorkspace.shared.open(url)
+                close()
+            } else {
+                toggle(.calendar)
+            }
+        case 2:
+            if !watcher.waiting.isEmpty, let t3 = t3AppURL {
+                NSWorkspace.shared.open(t3)
+                close()
+            } else {
+                toggle(.inbox)
+            }
+        case 3:
+            player.send("playpause")
+        default:
+            break
         }
     }
 
@@ -212,6 +240,7 @@ final class Island {
         player.refresh()
         hoverLeftAt = nil
         homePinned = false
+        state.keyboard = false
         present(.home)
     }
 
@@ -320,6 +349,7 @@ final class Island {
 
     /// Grows (or shrinks) the open island into other content without closing.
     private func morph(to content: Content) {
+        releaseNumbers()
         let tallest = max(content.height, state.content.height)
         setFrame(contentHeight: tallest)
         withAnimation(.easeIn(duration: 0.07 * slowmo)) { state.showContent = false }
@@ -344,8 +374,15 @@ final class Island {
         panel.setFrame(frame, display: true)
     }
 
+    private func releaseNumbers() {
+        guard state.keyboard else { return }
+        state.keyboard = false
+        Trigger.captureNumbers(nil)
+    }
+
     private func close() {
         guard state.open else { return }
+        releaseNumbers()
         dismissTimer?.cancel()
         if let monitor = outsideClickMonitor {
             NSEvent.removeMonitor(monitor)

@@ -8,22 +8,57 @@ import Carbon
 enum Trigger {
     private static let capsLock: UInt64 = 0x7_0000_0039
     private static let f18: UInt64 = 0x7_0000_006D
+    private static let signature = OSType(0x4E54_4348)  // "NTCH"
     private static var action: (() -> Void)?
+    private static var numberAction: ((Int) -> Void)?
     private static var hotKey: EventHotKeyRef?
+    private static var numberKeys: [EventHotKeyRef] = []
+    private static var lastPress = Date.distantPast
 
     static func install(_ action: @escaping () -> Void) {
         remapCapsLock()
         Self.action = action
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let installed = InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
-            log("trigger pressed")
-            DispatchQueue.main.async { Trigger.action?() }
+        let installed = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+            var id = EventHotKeyID()
+            GetEventParameter(
+                event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                nil, MemoryLayout<EventHotKeyID>.size, nil, &id)
+            DispatchQueue.main.async { Trigger.pressed(id.id) }
             return noErr
         }, 1, &spec, nil, nil)
         log("hot key handler installed, status \(installed)")
-        let id = EventHotKeyID(signature: OSType(0x4E54_4348), id: 1)  // "NTCH"
+        let id = EventHotKeyID(signature: signature, id: 1)
         let status = RegisterEventHotKey(UInt32(kVK_F18), 0, id, GetApplicationEventTarget(), 0, &hotKey)
         log("Caps Lock trigger registered, status \(status)")
+    }
+
+    private static func pressed(_ id: UInt32) {
+        if id == 1 {
+            // Holding Caps Lock repeats; only a fresh press counts.
+            let now = Date()
+            defer { lastPress = now }
+            guard now.timeIntervalSince(lastPress) > 0.3 else { return }
+            action?()
+        } else {
+            numberAction?(Int(id) - 10)
+        }
+    }
+
+    /// Captures 1, 2 and 3 everywhere while the island is open from the
+    /// keyboard, and gives them back as soon as it closes.
+    static func captureNumbers(_ handler: ((Int) -> Void)?) {
+        numberKeys.forEach { UnregisterEventHotKey($0) }
+        numberKeys = []
+        numberAction = handler
+        guard handler != nil else { return }
+        for (n, key) in [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3].enumerated() {
+            var ref: EventHotKeyRef?
+            let id = EventHotKeyID(signature: signature, id: UInt32(11 + n))
+            if RegisterEventHotKey(UInt32(key), 0, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+                numberKeys.append(ref)
+            }
+        }
     }
 
     /// Adds Caps Lock → F18 to the user's key mappings, keeping any others.

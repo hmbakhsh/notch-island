@@ -24,6 +24,8 @@ final class IslandState: ObservableObject {
     @Published var open = false
     @Published var showContent = false
     @Published var content = Content.player
+    /// Opened from the keyboard: number keys act on the overview's tiles.
+    @Published var keyboard = false
     /// The notch (or, on screens without one, a sliver at the top centre).
     @Published var notch = CGSize(width: 200, height: 0)
 }
@@ -84,7 +86,7 @@ struct IslandView: View {
         case .home:
             HomeView(
                 agenda: agenda, player: player, watcher: watcher, history: history,
-                open: onOpenPanel, join: onOpenURL)
+                keyboard: state.keyboard, open: onOpenPanel, join: onOpenURL)
         }
     }
 }

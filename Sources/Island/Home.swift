@@ -12,18 +12,20 @@ struct HomeView: View {
     @ObservedObject var player: Player
     @ObservedObject var watcher: T3Watcher
     @ObservedObject var history: History
+    /// Show 1/2/3 keycaps on the tiles.
+    let keyboard: Bool
     let open: (Island.Panel) -> Void
     let join: (URL) -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            Tile(icon: "calendar", label: nextEvent?.isNow == true ? "Now" : "Next") { open(.calendar) } content: {
+            Tile(icon: "calendar", label: nextEvent?.isNow == true ? "Now" : "Next", key: keyboard ? 1 : nil) { open(.calendar) } content: {
                 calendar
             }
-            Tile(icon: "tray.full.fill", label: "Inbox") { open(.inbox) } content: {
+            Tile(icon: "tray.full.fill", label: "Inbox", key: keyboard ? 2 : nil) { open(.inbox) } content: {
                 inbox
             }
-            Tile(icon: "music.note", label: "Spotify") { open(.player) } content: {
+            Tile(icon: "music.note", label: "Spotify", key: keyboard ? 3 : nil) { open(.player) } content: {
                 spotify
             }
         }
@@ -122,6 +124,7 @@ struct HomeView: View {
 private struct Tile<Content: View>: View {
     let icon: String
     let label: String
+    let key: Int?
     let action: () -> Void
     @ViewBuilder let content: Content
     @State private var hovered = false
@@ -131,6 +134,14 @@ private struct Tile<Content: View>: View {
             HStack(spacing: 5) {
                 Image(systemName: icon).font(.system(size: 10, weight: .semibold))
                 Text(label.uppercased()).font(.system(size: 9.5, weight: .semibold)).kerning(0.5)
+                Spacer(minLength: 0)
+                if let key {
+                    Text("\(key)")
+                        .font(.system(size: 10, weight: .bold).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(width: 17, height: 17)
+                        .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Color.white.opacity(0.12)))
+                }
             }
             .foregroundStyle(.white.opacity(0.4))
             Spacer(minLength: 6)
