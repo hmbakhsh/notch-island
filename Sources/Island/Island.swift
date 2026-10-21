@@ -113,6 +113,9 @@ final class Island {
             }
             devices.start()
         }
+        center.addObserver(forName: mirrorReplayName, object: nil, queue: .main) { [weak self] _ in
+            self?.mirror.replayLatest()
+        }
         center.addObserver(forName: devicePreviewName, object: nil, queue: .main) { [weak self] note in
             self?.devices.preview(note.userInfo?["json"] as? String ?? "AirPods Pro")
         }

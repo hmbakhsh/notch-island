@@ -18,6 +18,7 @@ let usage = """
            notch --home                                    open/close the overview (bind it to any key)
            notch --agents                                  open/close the live list of T3 agents
            notch --preview-device "AirPods Pro"            preview the headphones-connected animation
+           notch --replay-notification                     show the latest mirrored (e.g. Slack) notification again
 
     History is kept in ~/.local/state/notch/history.jsonl (one JSON entry per line).
 

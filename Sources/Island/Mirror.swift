@@ -12,6 +12,7 @@ final class NotificationMirror {
     private var timer: Timer?
     private var warned = false
 
+    private static var lastError = ""
     private static let database = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Group Containers/group.com.apple.usernoted/db2/db").path
 
@@ -23,6 +24,20 @@ final class NotificationMirror {
         guard !apps.isEmpty else { return }
         poll()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.poll() }
+    }
+
+    /// Shows the most recent mirrored notification again, for testing.
+    func replayLatest() {
+        let after = (lastID ?? 0) - 500
+        DispatchQueue.global(qos: .utility).async {
+            guard let last = Self.fetch(after: after, apps: self.apps)?.rows.last,
+                  let message = Self.message(app: last.app, data: last.data)
+            else {
+                log("notification mirror: nothing to replay")
+                return
+            }
+            DispatchQueue.main.async { self.onMessage?(message) }
+        }
     }
 
     private func poll() {
@@ -37,13 +52,16 @@ final class NotificationMirror {
         guard let result else {
             if !warned {
                 warned = true
-                log("notification mirror: can't read the notification database; give Island Full Disk Access")
+                log("notification mirror: can't read the notification database (\(Self.lastError)); give Island Full Disk Access")
             }
             return
         }
         // First read only finds where "now" is; older notifications aren't replayed.
         defer { lastID = max(lastID ?? 0, result.maxID) }
-        guard lastID != nil else { return }
+        guard lastID != nil else {
+            log("notification mirror: reading notifications from \(apps.joined(separator: ", "))")
+            return
+        }
         for row in result.rows {
             if let message = Self.message(app: row.app, data: row.data) { onMessage?(message) }
         }
@@ -60,9 +78,16 @@ final class NotificationMirror {
         guard !title.isEmpty || body?.isEmpty == false else { return nil }
 
         let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app)
-        var m = Message(title: title.isEmpty ? (appURL?.deletingPathExtension().lastPathComponent ?? app) : title)
-        m.body = [subtitle, body].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
-        m.source = appURL?.deletingPathExtension().lastPathComponent
+        let appName = appURL?.deletingPathExtension().lastPathComponent ?? app
+        var m = Message(title: title.isEmpty ? appName : title)
+        m.body = body
+        m.source = appName
+        // Slack and similar put the workspace in the title and the channel in
+        // the subtitle: lead with the channel, keep the workspace as the label.
+        if let subtitle, !subtitle.isEmpty {
+            m.title = subtitle
+            m.source = title.isEmpty ? appName : "\(appName) · \(title)"
+        }
         m.image = appURL.map { "app:" + $0.path }
         m.open = appURL?.path
         m.seconds = 5
@@ -76,24 +101,29 @@ final class NotificationMirror {
         let list = apps.map { "'" + $0.replacingOccurrences(of: "'", with: "''") + "'" }.joined(separator: ",")
         let query = """
             select r.rec_id, a.identifier, hex(r.data) from record r join app a on a.app_id = r.app_id
-            where r.rec_id > \\(after ?? Int.max) and a.identifier in (\\(list)) order by r.rec_id;
+            where r.rec_id > \(after ?? Int.max) and a.identifier in (\(list)) order by r.rec_id;
             select coalesce(max(rec_id), 0) from record;
             """
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = ["-readonly", "-separator", "\\t", "file:\\(database)?mode=ro", query]
+        process.arguments = ["-readonly", "-separator", "\t", "file:\(database)?mode=ro", query]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
+        let errors = Pipe()
+        process.standardError = errors
         guard (try? process.run()) != nil else { return nil }
         let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
+        guard process.terminationStatus == 0 else {
+            lastError = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return nil
+        }
 
-        var lines = output.split(separator: "\\n").map(String.init)
+        var lines = output.split(separator: "\n").map(String.init)
         guard let last = lines.popLast(), let maxID = Int(last) else { return nil }
         let rows = lines.compactMap { line -> (app: String, data: Data)? in
-            let parts = line.split(separator: "\\t", omittingEmptySubsequences: false)
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
             guard parts.count == 3, let data = Data(hex: String(parts[2])) else { return nil }
             return (String(parts[1]), data)
         }
