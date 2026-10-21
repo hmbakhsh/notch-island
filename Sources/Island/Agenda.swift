@@ -345,11 +345,11 @@ struct TagChip: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .frame(height: 18)
-            .background(Capsule().fill(color.opacity(0.18)))
+            .padding(.horizontal, 5)
+            .frame(height: 14)
+            .background(Capsule().fill(color.opacity(0.16)))
             .fixedSize()
     }
 }
