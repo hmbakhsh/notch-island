@@ -44,7 +44,7 @@ final class Island {
         panel.hasShadow = false
         panel.level = .screenSaver
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        panel.contentView = FirstClickHost(rootView: IslandView(
+        let host = FirstClickHost(rootView: IslandView(
             state: state, player: player, history: history, watcher: watcher, agenda: agenda,
             onMessageTap: { [weak self] in self?.tapMessage() },
             onMessageHover: { [weak self] inside in self?.hoverMessage(inside) },
@@ -61,6 +61,9 @@ final class Island {
                 self?.close()
             },
             onOpenPanel: { [weak self] panel in self?.toggle(panel) }))
+        // The island sizes the window itself; don't let SwiftUI resize it too.
+        host.sizingOptions = []
+        panel.contentView = host
 
         let center = DistributedNotificationCenter.default()
         center.addObserver(forName: spotifyName, object: nil, queue: .main) { [weak self] _ in
@@ -343,25 +346,20 @@ final class Island {
         state.open = false
         state.showContent = false
         panel.orderFrontRegardless()
-        withAnimation(.spring(response: 0.3 * slowmo, dampingFraction: 0.78)) { state.open = true }
-        withAnimation(.easeOut(duration: 0.14 * slowmo).delay(0.07 * slowmo)) { state.showContent = true }
+        withAnimation(.spring(response: 0.32 * slowmo, dampingFraction: 0.82)) { state.open = true }
+        withAnimation(.easeOut(duration: 0.18 * slowmo).delay(0.04 * slowmo)) { state.showContent = true }
     }
 
     /// Grows (or shrinks) the open island into other content without closing.
     private func morph(to content: Content) {
         releaseNumbers()
-        let tallest = max(content.height, state.content.height)
-        setFrame(contentHeight: tallest)
-        withAnimation(.easeIn(duration: 0.07 * slowmo)) { state.showContent = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.07 * slowmo) { [weak self] in
-            guard let self else { return }
-            withAnimation(.spring(response: 0.3 * slowmo, dampingFraction: 0.82)) { self.state.content = content }
-            withAnimation(.easeOut(duration: 0.14 * slowmo).delay(0.08 * slowmo)) { self.state.showContent = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4 * slowmo) {
-                if self.state.open, self.state.content.height == content.height {
-                    self.setFrame(contentHeight: content.height)
-                }
-            }
+        // Grow the window first (it's transparent), shrink it only once the
+        // shape has finished, so the window edge never cuts the animation.
+        setFrame(contentHeight: max(content.height, state.content.height))
+        withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.86)) { state.content = content }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5 * slowmo) { [weak self] in
+            guard let self, self.state.open, self.state.content.key == content.key else { return }
+            self.setFrame(contentHeight: content.height)
         }
     }
 
@@ -388,10 +386,8 @@ final class Island {
             NSEvent.removeMonitor(monitor)
             outsideClickMonitor = nil
         }
-        withAnimation(.easeIn(duration: 0.07 * slowmo)) { state.showContent = false }
-        withAnimation(.spring(response: 0.26 * slowmo, dampingFraction: 1).delay(0.03 * slowmo)) {
-            state.open = false
-        }
+        withAnimation(.easeIn(duration: 0.12 * slowmo)) { state.showContent = false }
+        withAnimation(.spring(response: 0.28 * slowmo, dampingFraction: 1)) { state.open = false }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.32 * slowmo) { [weak self] in
             guard let self, !self.state.open else { return }
             self.panel.orderOut(nil)

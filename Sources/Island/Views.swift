@@ -8,6 +8,17 @@ enum Content {
     case calendar(height: CGFloat)
     case home
 
+    /// Identity for cross-fading between kinds of content.
+    var key: String {
+        switch self {
+        case .player: return "player"
+        case .message(let m): return "message:" + m.title + (m.body ?? "")
+        case .inbox: return "inbox"
+        case .calendar: return "calendar"
+        case .home: return "home"
+        }
+    }
+
     var height: CGFloat {
         switch self {
         case .player: return 168
@@ -47,27 +58,35 @@ struct IslandView: View {
     let onOpenPanel: (Island.Panel) -> Void
 
     var body: some View {
-        let radius: CGFloat = state.open ? (state.content.height > 100 ? 30 : 24) : 10
+        let radius: CGFloat = state.open ? 30 : 10
         let shape = UnevenRoundedRectangle(
             bottomLeadingRadius: radius, bottomTrailingRadius: radius, style: .continuous)
+        let width = state.open ? islandWidth : state.notch.width
+        let height = state.notch.height + (state.open ? state.content.height : 0)
         ZStack(alignment: .top) {
             shape
                 .fill(Color.black)
-                .frame(
-                    width: state.open ? islandWidth : state.notch.width,
-                    height: state.notch.height + (state.open ? state.content.height : 0))
-                .shadow(color: .black.opacity(state.open ? 0.5 : 0), radius: 16, y: 8)
-            content
-                .frame(width: islandWidth, height: state.content.height)
-                .padding(.top, state.notch.height)
-                .opacity(state.showContent ? 1 : 0)
-                .blur(radius: state.showContent ? 0 : 6)
-                .scaleEffect(state.showContent ? 1 : 0.94, anchor: .top)
+                .frame(width: width, height: height)
+                .shadow(color: .black.opacity(state.open ? 0.45 : 0), radius: 14, y: 6)
+            // Content is clipped to the shape, so the island reveals it as it
+            // grows and old/new content cross-fade inside it when it changes.
+            ZStack(alignment: .top) {
+                content
+                    .frame(width: islandWidth, height: state.content.height)
+                    .padding(.top, state.notch.height)
+                    .id(state.content.key)
+                    // Old content leaves quickly so the two barely overlap.
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .top))
+                            .animation(.easeOut(duration: 0.2 * slowmo).delay(0.05 * slowmo)),
+                        removal: .opacity.animation(.easeOut(duration: 0.08 * slowmo))))
+            }
+            .frame(width: width, height: height, alignment: .top)
+            .clipShape(shape)
+            .opacity(state.showContent ? 1 : 0)
         }
-        .frame(
-            width: islandWidth + shadowRoom * 2,
-            height: state.notch.height + state.content.height + shadowRoom,
-            alignment: .top)
+        // Pinned to the top so resizing the window never moves anything.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder private var content: some View {
