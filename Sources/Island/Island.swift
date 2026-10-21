@@ -206,7 +206,10 @@ final class Island {
                 done(.calendar(height: AgendaLayout.height(events: self.agenda.events, access: self.agenda.access)))
             }
         case .agents:
-            state.selected = takeListKeys() ? AgentsView.order(watcher).first : nil
+            // Start on the thread that finished most recently, not one still working.
+            let shown = Set(AgentsView.order(watcher))
+            let latestDone = watcher.completed.filter { shown.contains($0.id) }.max { $0.since < $1.since }?.id
+            state.selected = takeListKeys() ? latestDone ?? AgentsView.order(watcher).first : nil
             done(.agents(height: AgentsView.height(watcher)))
         case .home:
             agenda.reloadIfAllowed()
