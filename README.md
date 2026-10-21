@@ -47,7 +47,7 @@ row to open it.
 
 **Calendar.** The rest of today and tomorrow from the calendars in
 Calendar.app, with time left for the current event and a Join button for
-Meet, Zoom, Teams, Whereby and Webex links. Declined, cancelled, all-day and
+Meet, Zoom, Teams, Whereby and Webex links; clicking a call joins it too. Declined, cancelled, all-day and
 out-of-office events are hidden. Open it with `notch --calendar`, e.g. from a
 status bar item.
 

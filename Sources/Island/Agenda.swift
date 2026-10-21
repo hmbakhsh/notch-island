@@ -252,8 +252,9 @@ private struct EventRow: View {
             .contentShape(Rectangle())
             .onHover { hovered = $0 }
             .onTapGesture {
-                // Calendar.app has no public link to one event; open the app on that day.
-                onOpen(URL(fileURLWithPath: "/System/Applications/Calendar.app"))
+                // Calls open their meeting link. Calendar.app has no public
+                // link to one event, so anything else just opens the app.
+                onOpen(event.joinURL ?? URL(fileURLWithPath: "/System/Applications/Calendar.app"))
             }
         }
     }
