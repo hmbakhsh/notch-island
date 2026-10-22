@@ -141,13 +141,13 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Keyboard") {
+            Section {
                 Toggle("Caps Lock opens the island", isOn: model.binding(\.capsLockTrigger, false))
                 Text("Caps + 1–4 opens a tile, Caps + , opens settings. On a banner, Caps pins it: ⏎ opens it, Esc dismisses it.")
                     .font(.caption).foregroundStyle(.secondary)
-            }
+            } header: { FormHeader("Keyboard") }
 
-            Section("Banners") {
+            Section {
                 LabeledContent("Stay on screen") {
                     HStack {
                         Slider(value: model.binding(\.bannerSeconds, 8), in: 3...30, step: 1)
@@ -156,9 +156,9 @@ struct SettingsView: View {
                 }
                 Toggle("When T3 agents finish or need you", isOn: model.binding(\.t3Banners, true))
                 Toggle("When headphones connect", isOn: model.binding(\.deviceAlerts, true))
-            }
+            } header: { FormHeader("Banners") }
 
-            Section("Meetings") {
+            Section {
                 Toggle("Countdown before meetings", isOn: model.binding(\.meetingReminders, true))
                 Picker("Show it", selection: model.binding(\.meetingLeadMinutes, 2)) {
                     ForEach([1, 2, 3, 5, 10], id: \.self) { Text("\($0) min before").tag($0) }
@@ -168,7 +168,7 @@ struct SettingsView: View {
                     ForEach([15.0, 30, 60, 120], id: \.self) { Text("\(Int($0))s").tag($0) }
                 }
                 .disabled(model.config.meetingReminders == false)
-            }
+            } header: { FormHeader("Meetings") }
 
             Section {
                 ForEach(model.mirrorCandidates, id: \.id) { app in
@@ -183,7 +183,7 @@ struct SettingsView: View {
                     }
                 }
             } header: {
-                Text("Notifications to show")
+                FormHeader("Notifications to show")
             } footer: {
                 HStack {
                     Text("Needs Full Disk Access for Island.").font(.caption).foregroundStyle(.secondary)
@@ -196,7 +196,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Calendars") {
+            Section {
                 if agenda.access != .granted {
                     Text("Open the calendar panel once to allow access.").foregroundStyle(.secondary)
                 }
@@ -211,10 +211,18 @@ struct SettingsView: View {
                             .labelsHidden()
                     }
                 }
-            }
+            } header: { FormHeader("Calendars") }
         }
         .formStyle(.grouped)
         .frame(width: 460)
         .frame(minHeight: 480)
     }
+}
+
+/// Grouped-form section header, flush with the card's left edge instead of
+/// indented to the row text.
+private struct FormHeader: View {
+    let title: String
+    init(_ title: String) { self.title = title }
+    var body: some View { Text(title).padding(.leading, -10) }
 }

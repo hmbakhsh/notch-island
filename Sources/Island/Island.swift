@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 let slowmo = Double(ProcessInfo.processInfo.environment["ISLAND_SLOWMO"] ?? "") ?? 1
@@ -44,6 +45,7 @@ final class Island: NSObject, NSApplicationDelegate {
     private var remindedMeetings = Set<String>()
     private lazy var settings = SettingsWindow(agenda: agenda) { [weak self] in self?.applyConfig() }
     private var capsInstalled = false
+    private var subscriptions = Set<AnyCancellable>()
 
     override init() {
         panel = IslandPanel(
@@ -141,6 +143,9 @@ final class Island: NSObject, NSApplicationDelegate {
         hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.checkHover()
         }
+        player.$playing.removeDuplicates().receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateLive() }
+            .store(in: &subscriptions)
         player.refresh()
         updateBar()
     }
@@ -599,20 +604,25 @@ final class Island: NSObject, NSApplicationDelegate {
     // MARK: Live indicator
 
     /// Shows, updates or hides the wings beside the notch as agents start,
-    /// wait and finish. While a panel or banner is up, close() settles it.
+    /// wait and finish, and as Spotify plays and stops. While a panel or
+    /// banner is up, close() settles it.
     private func updateLive() {
         let needs = watcher.waiting.filter { $0.needsInput || $0.reason == "failed" }.count
         let done = watcher.waiting.count - needs
         let counts = watcher.running.isEmpty && watcher.waiting.isEmpty
             ? nil : LiveCounts(running: watcher.running.count, needs: needs, done: done)
-        guard counts != state.live else { return }
-        let appearing = state.live == nil
-        if !busy, appearing, counts != nil { showLive() }
-        withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.82)) { state.live = counts }
-        if !busy, counts == nil { hideWingsIfIdle() }
+        let music = player.playing
+        guard counts != state.live || music != state.music else { return }
+        let appearing = !wingsVisible
+        if !busy, appearing, counts != nil || music { showLive() }
+        withAnimation(.spring(response: 0.34 * slowmo, dampingFraction: 0.82)) {
+            state.live = counts
+            state.music = music
+        }
+        if !busy, !wingsVisible { hideWingsIfIdle() }
     }
 
-    private var wingsVisible: Bool { state.live != nil || state.device != nil }
+    private var wingsVisible: Bool { state.live != nil || state.device != nil || state.music }
 
     private func hideWingsIfIdle() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35 * slowmo) { [weak self] in

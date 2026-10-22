@@ -194,28 +194,43 @@ final class T3Watcher: ObservableObject {
           select thread_id, status, completed_at, payload_json,
                  row_number() over (partition by thread_id order by ordinal desc) rn
           from orchestration_v2_projection_runs),
+        -- Subagent threads, per top-level thread: is any still working, and
+        -- when did the last one finish. A parent whose own turn has ended is
+        -- still working while its subagents are.
+        kids as (
+          select json_extract(c.payload_json, '$.lineage.rootThreadId') root,
+                 max(k.status in ('waiting', 'queued', 'preparing', 'starting', 'running')) busy,
+                 max(k.completed_at) done
+          from orchestration_v2_projection_threads c
+          join latest k on k.thread_id = c.thread_id and k.rn = 1
+          where json_extract(c.payload_json, '$.lineage.parentThreadId') is not null
+          group by root),
         pending as (
           select thread_id, min(created_at) since
           from orchestration_v2_projection_runtime_requests where status = 'pending' group by thread_id)
         select t.thread_id id, t.title, coalesce(p.title, '') project,
           case when q.thread_id is not null then 'question'
                when l.status = 'waiting' then 'approval'
-               when l.status in ('queued', 'preparing', 'starting', 'running') then 'running'
+               when l.status in ('queued', 'preparing', 'starting', 'running') or k.busy then 'running'
                when l.status = 'failed' then 'failed'
                else 'finished' end reason,
-          coalesce(q.since, l.completed_at, json_extract(l.payload_json, '$.startedAt'), t.updated_at) since,
+          coalesce(q.since,
+                   case when k.busy then json_extract(l.payload_json, '$.startedAt')
+                        else max(l.completed_at, coalesce(k.done, '')) end,
+                   l.completed_at, json_extract(l.payload_json, '$.startedAt'), t.updated_at) since,
           coalesce(json_extract(t.payload_json, '$.lastVisitedAt'), '') visited,
           coalesce(json_extract(l.payload_json, '$.modelSelection.model'), '') model,
           coalesce(json_extract(l.payload_json, '$.startedAt'), '') started
         from orchestration_v2_projection_threads t
         join latest l on l.thread_id = t.thread_id and l.rn = 1
         left join pending q on q.thread_id = t.thread_id
+        left join kids k on k.root = t.thread_id
         left join projection_projects p on p.project_id = t.project_id
         where t.archived_at is null and t.deleted_at is null
           and json_extract(t.payload_json, '$.settledAt') is null
           and json_extract(t.payload_json, '$.lineage.parentThreadId') is null
           and coalesce(json_extract(t.payload_json, '$.snoozedUntil'), '') < strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-          and (q.thread_id is not null or l.status in ('waiting', 'queued', 'preparing', 'starting', 'running')
+          and (q.thread_id is not null or k.busy or l.status in ('waiting', 'queued', 'preparing', 'starting', 'running')
                or (l.status in ('completed', 'failed')
                    and (l.completed_at > coalesce(json_extract(t.payload_json, '$.lastVisitedAt'), '')
                         or l.completed_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-12 hours'))))

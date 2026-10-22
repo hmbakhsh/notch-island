@@ -50,6 +50,8 @@ final class IslandState: ObservableObject {
     @Published var live: LiveCounts?
     /// Headphones that just connected: take over the wings for a few seconds.
     @Published var device: ConnectedDevice?
+    /// Spotify is playing: its cover and a wave sit in the wings.
+    @Published var music = false
 
     var liveHeight: CGFloat { max(notch.height, LiveLayout.minHeight) }
     var liveWidth: CGFloat { notch.width + LiveLayout.wing * 2 }
@@ -78,7 +80,7 @@ struct IslandView: View {
         let radius: CGFloat = state.open ? 30 : 10
         let shape = UnevenRoundedRectangle(
             bottomLeadingRadius: radius, bottomTrailingRadius: radius, style: .continuous)
-        let compact = !state.open && (state.live != nil || state.device != nil)
+        let compact = !state.open && (state.live != nil || state.device != nil || state.music)
         let width = state.open ? islandWidth : compact ? state.liveWidth : state.notch.width
         let height = state.open ? state.notch.height + state.content.height
             : compact ? state.liveHeight : state.notch.height
@@ -107,6 +109,12 @@ struct IslandView: View {
             if compact, let device = state.device {
                 DeviceWings(device: device, notchWidth: state.notch.width)
                     .frame(width: width, height: height)
+                    .transition(.opacity)
+            } else if compact, state.music {
+                MusicWings(player: player, needs: state.live?.needs ?? 0, notchWidth: state.notch.width)
+                    .frame(width: width, height: height)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onOpenPanel(state.live?.needs ?? 0 > 0 ? .agents : .player) }
                     .transition(.opacity)
             } else if compact, let live = state.live {
                 LiveWings(counts: live, notchWidth: state.notch.width)
@@ -387,3 +395,41 @@ struct Equalizer: View {
     }
 }
 
+
+/// The wings while Spotify plays: the cover left, a wave in its colour right.
+/// An agent that needs you takes the right wing instead.
+struct MusicWings: View {
+    @ObservedObject var player: Player
+    let needs: Int
+    let notchWidth: CGFloat
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Group {
+                if let image = player.artwork {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Color.white.opacity(0.15)
+                }
+            }
+            .frame(width: 22, height: 22)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .frame(width: LiveLayout.wing)
+            Spacer(minLength: notchWidth)
+            Group {
+                if needs > 0 {
+                    Text("\(needs)")
+                        .font(.system(size: 11, weight: .bold).monospacedDigit())
+                        .foregroundStyle(.black)
+                        .frame(minWidth: 18, minHeight: 18)
+                        .padding(.horizontal, 2)
+                        .background(Capsule().fill(Color.orange))
+                } else {
+                    Equalizer(playing: player.playing, tint: player.tint)
+                        .scaleEffect(0.8)
+                }
+            }
+            .frame(width: LiveLayout.wing)
+        }
+    }
+}
