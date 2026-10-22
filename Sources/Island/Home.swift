@@ -28,7 +28,10 @@ struct HomeView: View {
                 }
             }
             HStack(spacing: 8) {
-                Tile(icon: "music.note", label: "Spotify", key: keyboard ? 3 : nil) { open(.player) } content: {
+                Tile(
+                    icon: "music.note", label: "Spotify", key: keyboard ? 3 : nil,
+                    wave: player.running && !player.title.isEmpty ? (player.playing, player.tint) : nil
+                ) { open(.player) } content: {
                     spotify
                 }
                 Tile(icon: "bell.fill", label: "Notifications", key: keyboard ? 4 : nil) { open(.inbox) } content: {
@@ -88,7 +91,7 @@ struct HomeView: View {
 
     /// Unread count, and the latest notification (channel and message for Slack).
     @ViewBuilder private var notifications: some View {
-        if let latest = history.entries.first {
+        if let latest = history.entries.first(where: { !$0.message.fromAgent }) {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     primary(latest.message.title, lines: 1)
@@ -111,7 +114,14 @@ struct HomeView: View {
 
     @ViewBuilder private var spotify: some View {
         if player.running, !player.title.isEmpty {
-            HStack(alignment: .bottom) {
+            HStack(alignment: .bottom, spacing: 8) {
+                if let art = player.artwork {
+                    Image(nsImage: art)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 32, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     primary(player.title)
                     secondary(player.artist)
@@ -161,6 +171,8 @@ private struct Tile<Content: View>: View {
     let icon: String
     let label: String
     let key: Int?
+    /// In place of the icon: the music's wave (moving while it plays), in its colour.
+    var wave: (playing: Bool, tint: Color)? = nil
     let action: () -> Void
     @ViewBuilder let content: Content
     @State private var hovered = false
@@ -168,7 +180,13 @@ private struct Tile<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 5) {
-                Image(systemName: icon).font(.system(size: 10, weight: .semibold))
+                if let wave {
+                    Equalizer(playing: wave.playing, tint: wave.tint)
+                        .scaleEffect(0.55)
+                        .frame(width: 10, height: 11)
+                } else {
+                    Image(systemName: icon).font(.system(size: 10, weight: .semibold))
+                }
                 Text(label.uppercased()).font(.system(size: 9.5, weight: .semibold)).kerning(0.5)
                 Spacer(minLength: 0)
                 if let key {
