@@ -17,6 +17,12 @@ SPOTIFY_ICON="${SPOTIFY_ICON:-󰓇}"
 SPOTIFY_ICON_FONT="${SPOTIFY_ICON_FONT:-$ICON_FONT}"
 ISLAND_PLUGINS="${ISLAND_DIR:-$(dirname "${BASH_SOURCE[0]}")}/plugins"
 
+# Keep bar items clear of the island's wings (42pt each side of the notch):
+# a 185pt notch needs 269pt, plus a little air. Set ISLAND_NOTCH_WIDTH=0 to
+# leave your bar's notch_width alone.
+NOTCH_WIDTH="${ISLAND_NOTCH_WIDTH:-280}"
+(( NOTCH_WIDTH > 0 )) && sketchybar --bar notch_width="$NOTCH_WIDTH"
+
 sketchybar --add event island_update \
            --add item island_bell right \
            --set island_bell icon=󰂚 icon.color=0x66ffffff \
