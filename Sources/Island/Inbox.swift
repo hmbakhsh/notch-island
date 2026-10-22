@@ -311,9 +311,10 @@ struct NotificationGroup: Identifiable {
 
 enum InboxLayout {
     static let rowHeight: CGFloat = 44
-    static let maxPerApp = 5
-    static let maxOther = 4
-    static let maxRows = 8
+    static let maxPerApp = 4
+    static let maxOther = 3
+    /// Rows in the notifications list overall (default 6; set in settings).
+    static var maxRows: Int { Config.shared.notificationRows ?? 6 }
 }
 
 /// Notifications, grouped: a section per mirrored app (Slack) with a row per

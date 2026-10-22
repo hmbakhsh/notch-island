@@ -192,6 +192,8 @@ struct Config: Codable {
     var meetingLeadMinutes: Int?
     /// How long the meeting banner stays, in seconds (default 30).
     var meetingBannerSeconds: Double?
+    /// Most rows the notifications list shows (default 6).
+    var notificationRows: Int?
 
     var banner: Double { bannerSeconds ?? 8 }
     var meetingLead: Int { meetingLeadMinutes ?? 2 }

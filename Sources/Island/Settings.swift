@@ -182,6 +182,9 @@ struct SettingsView: View {
                         }
                     }
                 }
+                Picker("List shows up to", selection: model.binding(\.notificationRows, 6)) {
+                    ForEach([4, 5, 6, 8, 10], id: \.self) { Text("\($0) rows").tag($0) }
+                }
             } header: {
                 FormHeader("Notifications to show")
             } footer: {
