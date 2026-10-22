@@ -355,7 +355,7 @@ struct InboxView: View {
                         leading: AnyView(MessageIcon(message: message, size: 28)),
                         title: message.title,
                         detail: message.mirroredFrom == nil
-                            ? [message.source, message.body].compactMap { $0 }.joined(separator: " · ")
+                            ? [message.source?.replacingOccurrences(of: oldSeparator, with: separator), message.body].compactMap { $0 }.joined(separator: separator)
                             : message.body ?? "",
                         time: relative(group.latest.date),
                         badge: group.count > 1 ? group.count : nil,
@@ -382,7 +382,7 @@ struct InboxView: View {
                 continue
             }
             guard entry.date > dayAgo else { continue }
-            let app = m.source?.components(separatedBy: " · ").first ?? "Apps"
+            let app = m.source?.replacingOccurrences(of: oldSeparator, with: separator).components(separatedBy: separator).first ?? "Apps"
             let channel = (m.source ?? "") + "|" + m.title
             if mirrored[app] == nil { appOrder.append(app) }
             mirrored[app, default: [:]][channel, default: []].append(entry)

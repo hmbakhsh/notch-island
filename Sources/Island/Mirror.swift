@@ -115,7 +115,7 @@ final class NotificationMirror {
         // the subtitle: lead with the channel, keep the workspace as the label.
         if let subtitle, !subtitle.isEmpty {
             m.title = subtitle
-            m.source = title.isEmpty ? appName : "\(appName) · \(title)"
+            m.source = title.isEmpty ? appName : "\(appName)\(separator)\(title)"
         }
         m.image = appURL.map { "app:" + $0.path }
         m.open = appURL?.path

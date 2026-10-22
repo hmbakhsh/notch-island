@@ -204,7 +204,7 @@ final class Island: NSObject, NSApplicationDelegate {
     private func meetingMessage(_ event: AgendaEvent) -> Message {
         var m = Message(title: event.title)
         m.countdown = event.start.timeIntervalSince1970
-        m.body = [event.tag, event.detail].compactMap { $0 }.joined(separator: " · ")
+        m.body = [event.tag, event.detail].compactMap { $0 }.joined(separator: separator)
         if m.body?.isEmpty == true { m.body = nil }
         m.icon = event.joinURL == nil ? "calendar" : "video.fill"
         m.color = "green"

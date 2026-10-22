@@ -2,6 +2,10 @@ import AppKit
 import SwiftUI
 
 let spotifyToggleName = Notification.Name("dev.notchisland.spotify")
+/// Gap between parts of a line ("pulse  Opus 5.5  4m"), used instead of a "·".
+let separator = "\u{2003}"
+/// What older history entries were saved with.
+let oldSeparator = " · "
 let messageName = Notification.Name("dev.notchisland.message")
 let dismissName = Notification.Name("dev.notchisland.dismiss")
 let inboxName = Notification.Name("dev.notchisland.inbox")
@@ -44,16 +48,16 @@ struct Message: Codable {
     var copies: Bool?
     /// For a code: the address it was sent to.
     var account: String?
-            "teal": .teal, "cyan": .cyan, "blue": .blue, "indigo": .indigo, "purple": .purple,
-            "pink": .pink, "gray": .gray, "grey": .gray, "white": .white,
-        ]
-        guard let color = color?.lowercased() else { return .white }
     /// For an agent: its git repo's name, "" when it isn't in one.
     var repo: String?
 
     var tint: Color {
         let named: [String: Color] = [
             "red": .red, "orange": .orange, "yellow": .yellow, "green": .green, "mint": .mint,
+            "teal": .teal, "cyan": .cyan, "blue": .blue, "indigo": .indigo, "purple": .purple,
+            "pink": .pink, "gray": .gray, "grey": .gray, "white": .white,
+        ]
+        guard let color = color?.lowercased() else { return .white }
         if let c = named[color] { return c }
         let hex = color.hasPrefix("#") ? String(color.dropFirst()) : color
         guard hex.count == 6, let v = UInt32(hex, radix: 16) else { return .white }

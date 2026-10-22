@@ -348,7 +348,7 @@ private struct EventRow: View {
                     Text(event.title)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
-                    Text([relative(event, at: context.date), event.detail].compactMap { $0 }.joined(separator: " · "))
+                    Text([relative(event, at: context.date), event.detail].compactMap { $0 }.joined(separator: separator))
                         .font(.system(size: 11.5))
                         .foregroundStyle(event.isNow ? Color.green.opacity(0.9) : .white.opacity(0.5))
                 }

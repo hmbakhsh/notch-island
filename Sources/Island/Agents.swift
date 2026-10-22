@@ -198,13 +198,13 @@ private struct AgentRow: View {
         Image(systemName: name).font(.system(size: 14, weight: .semibold)).foregroundStyle(color)
     }
 
-    /// "pulse · Opus 5.5 · 4m 12s" while working; the status line otherwise.
+    /// "pulse  Opus 5.5  4m 12s" while working; the status line otherwise.
     private func detail(at now: Date) -> String {
         let project = thread.project.isEmpty || thread.project == "No project" ? nil : thread.project
-        guard thread.running else { return [project, thread.status].compactMap { $0 }.joined(separator: " · ") }
+        guard thread.running else { return [project, thread.status].compactMap { $0 }.joined(separator: separator) }
         let elapsed = Int(now.timeIntervalSince(isoDate(thread.since)))
         let time = elapsed < 3600 ? String(format: "%dm %02ds", elapsed / 60, elapsed % 60)
             : "\(elapsed / 3600)h \(elapsed % 3600 / 60)m"
-        return [project, prettyModel(thread.model), time].compactMap { $0 }.joined(separator: " · ")
+        return [project, prettyModel(thread.model), time].compactMap { $0 }.joined(separator: separator)
     }
 }

@@ -29,7 +29,7 @@ let usage = """
     Esc dismisses it.
 
       -b, --body TEXT       second line, wraps to two lines
-      -s, --source TEXT     small label top-right, e.g. "Claude · api"
+      -s, --source TEXT     small label top-right, e.g. "Claude api"
       -i, --icon NAME       SF Symbol, e.g. checkmark.circle.fill, exclamationmark.triangle.fill
       -a, --app NAME        use an app's icon instead, e.g. Claude, Slack
           --image PATH      use an image file instead
