@@ -38,6 +38,8 @@ struct Message: Codable {
     var tint: Color {
         let named: [String: Color] = [
             "red": .red, "orange": .orange, "yellow": .yellow, "green": .green, "mint": .mint,
+    /// A mirrored Slack notification's id ("T<team>_<ts>"), to find its channel.
+    var slackID: String?
             "teal": .teal, "cyan": .cyan, "blue": .blue, "indigo": .indigo, "purple": .purple,
             "pink": .pink, "gray": .gray, "grey": .gray, "white": .white,
         ]
@@ -62,7 +64,9 @@ struct Message: Codable {
     }
 
     func perform() {
-        if let open {
+        if let slackID, let url = Slack.channelLink(notification: slackID) {
+            NSWorkspace.shared.open(url)
+        } else if let open {
             let url = URL(string: open).flatMap { $0.scheme == nil ? nil : $0 }
                 ?? URL(fileURLWithPath: (open as NSString).expandingTildeInPath)
             if url.scheme?.hasPrefix("t3code") == true {

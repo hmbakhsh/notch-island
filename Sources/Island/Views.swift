@@ -111,10 +111,10 @@ struct IslandView: View {
                     .frame(width: width, height: height)
                     .transition(.opacity)
             } else if compact, state.music {
-                MusicWings(player: player, needs: state.live?.needs ?? 0, notchWidth: state.notch.width)
+                MusicWings(
+                    player: player, live: state.live, notchWidth: state.notch.width,
+                    openPlayer: { onOpenPanel(.player) }, openAgents: { onOpenPanel(.agents) })
                     .frame(width: width, height: height)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onOpenPanel(state.live?.needs ?? 0 > 0 ? .agents : .player) }
                     .transition(.opacity)
             } else if compact, let live = state.live {
                 LiveWings(counts: live, notchWidth: state.notch.width)
@@ -167,7 +167,9 @@ struct MessageView: View {
                     Spacer(minLength: 8)
                     if armed {
                         KeyHint()
-                    } else if let source = message.source {
+                    } else if let source = message.source, message.mirroredFrom == nil {
+                        // Mirrored banners skip it: the app's icon already says
+                        // where it's from, and the channel is the title.
                         Text(source)
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.white.opacity(0.4))
@@ -396,12 +398,16 @@ struct Equalizer: View {
 }
 
 
-/// The wings while Spotify plays: the cover left, a wave in its colour right.
-/// An agent that needs you takes the right wing instead.
+/// The wings while Spotify plays: the cover left, agents right. Agents
+/// matter more, so the right wing shows the most urgent of: threads needing
+/// you, threads working, threads finished unread; the music's wave only when
+/// no agent is active.
 struct MusicWings: View {
     @ObservedObject var player: Player
-    let needs: Int
+    let live: LiveCounts?
     let notchWidth: CGFloat
+    let openPlayer: () -> Void
+    let openAgents: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -415,21 +421,42 @@ struct MusicWings: View {
             .frame(width: 22, height: 22)
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .frame(width: LiveLayout.wing)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: openPlayer)
             Spacer(minLength: notchWidth)
-            Group {
-                if needs > 0 {
-                    Text("\(needs)")
-                        .font(.system(size: 11, weight: .bold).monospacedDigit())
-                        .foregroundStyle(.black)
-                        .frame(minWidth: 18, minHeight: 18)
-                        .padding(.horizontal, 2)
-                        .background(Capsule().fill(Color.orange))
-                } else {
-                    Equalizer(playing: player.playing, tint: player.tint)
-                        .scaleEffect(0.8)
-                }
+            agents
+                .frame(width: LiveLayout.wing)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture { live == nil ? openPlayer() : openAgents() }
+        }
+        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+        .foregroundStyle(.white)
+    }
+
+    @ViewBuilder private var agents: some View {
+        if let live, live.needs > 0 {
+            Text("\(live.needs)")
+                .font(.system(size: 11, weight: .bold).monospacedDigit())
+                .foregroundStyle(.black)
+                .frame(minWidth: 18, minHeight: 18)
+                .padding(.horizontal, 2)
+                .background(Capsule().fill(Color.orange))
+        } else if let live, live.running > 0 {
+            HStack(spacing: 4) {
+                Spinner()
+                Text("\(live.running)")
             }
-            .frame(width: LiveLayout.wing)
+        } else if let live, live.done > 0 {
+            HStack(spacing: 3) {
+                Image(systemName: "checkmark").font(.system(size: 9, weight: .heavy))
+                Text("\(live.done)")
+            }
+            .foregroundStyle(Color.green)
+        } else {
+            Equalizer(playing: player.playing, tint: player.tint)
+                .scaleEffect(0.8)
         }
     }
 }

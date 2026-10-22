@@ -460,7 +460,7 @@ final class Island: NSObject, NSApplicationDelegate {
             var merged = message
             merged.mergedCount = count
             merged.body = [message.title, message.body].compactMap { $0 }.joined(separator: ": ")
-            merged.title = "\(count) new \(message.source ?? "") messages"
+            merged.title = "\(count) new messages"
             queue[i] = merged
         } else {
             queue.append(message)

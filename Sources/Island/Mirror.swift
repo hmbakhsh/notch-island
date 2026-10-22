@@ -124,6 +124,7 @@ final class NotificationMirror {
         if app == "com.tinyspeck.slackmacgap", let id = request["iden"] as? String,
            id.hasPrefix("T"), let team = id.split(separator: "_").first {
             m.open = "slack://open?team=\(team)"
+            m.slackID = id
         }
         m.mirroredFrom = app
         return m
@@ -177,5 +178,35 @@ private extension Data {
             index = next
         }
         self.init(bytes)
+    }
+}
+
+/// Finds which channel a Slack notification came from. macOS doesn't store
+/// it, but Slack's own log does: each notification is logged as a
+/// NEW_NOTIFICATION block with the same id ("T<team>_<ts>") and the channel
+/// ("C…", or "D…" for DMs). The logs rotate at about 5 MB, so this works for
+/// roughly a day; after that the caller falls back to opening the workspace.
+enum Slack {
+    private static let logs = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/Slack/logs/Default")
+    private static let channel = try! NSRegularExpression(pattern: #""channel": "([CDG][A-Z0-9]+)""#)
+
+    static func channelLink(notification id: String) -> URL? {
+        guard let team = id.split(separator: "_").first, team.hasPrefix("T") else { return nil }
+        for file in ["webapp-console.log", "webapp-console1.log", "webapp-console2.log", "browser.log"] {
+            guard let text = try? String(contentsOf: logs.appendingPathComponent(file), encoding: .utf8),
+                  let hit = text.range(of: "\"id\": \"\(id)\"", options: .backwards),
+                  let start = text.range(of: "NEW_NOTIFICATION", options: .backwards, range: text.startIndex..<hit.lowerBound)
+            else { continue }
+            // The block runs until the next log line, which starts with "\n[".
+            let end = text.range(of: "\n[", range: hit.upperBound..<text.endIndex)?.lowerBound ?? text.endIndex
+            let block = String(text[start.lowerBound..<end])
+            guard let match = channel.firstMatch(in: block, range: NSRange(block.startIndex..., in: block)),
+                  let range = Range(match.range(at: 1), in: block)
+            else { continue }
+            return URL(string: "slack://channel?team=\(team)&id=\(block[range])")
+        }
+        log("slack: no channel found in Slack's logs for \(id)")
+        return nil
     }
 }

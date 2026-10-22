@@ -7,7 +7,8 @@
 #
 # Adds, right to left: a bell (orange with a count while T3 threads wait on
 # you, white when there are unseen messages) and, while Spotify plays, a
-# divider, the track title and the artist. Clicking opens the island.
+# divider, the track title and the artist (unless ISLAND_SPOTIFY=0). Clicking
+# opens the island.
 
 NOTCH="${NOTCH:-$HOME/.local/bin/notch}"
 # Icons need a Nerd Font. Override to match your bar, e.g. with
@@ -31,6 +32,10 @@ sketchybar --add event island_update \
                   script="$ISLAND_PLUGINS/island_bell.sh" \
                   click_script="$NOTCH --inbox" \
            --subscribe island_bell island_update
+
+# The island shows what's playing in its wings, so the bar item is optional:
+# ISLAND_SPOTIFY=0 leaves it out.
+[[ "${ISLAND_SPOTIFY:-1}" == 0 ]] && return 0 2>/dev/null
 
 # Right items render in reverse insertion order: title, artist, divider, bell.
 sketchybar --add event spotify_change com.spotify.client.PlaybackStateChanged \
