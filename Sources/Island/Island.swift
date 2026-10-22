@@ -65,7 +65,7 @@ final class Island: NSObject, NSApplicationDelegate {
                 self?.close()
             },
             onOpenEntry: { [weak self] entry in
-                entry.message.perform()
+                entry.open()
                 self?.close()
             },
             onOpenURL: { [weak self] url in
@@ -327,7 +327,7 @@ final class Island: NSObject, NSApplicationDelegate {
             if case .calendar = state.content {
                 if let event = agenda.events.first(where: { $0.id == id }) { NSWorkspace.shared.open(event.openURL) }
             } else if case .inbox = state.content {
-                InboxView.entry(id, in: history)?.message.perform()
+                InboxView.entry(id, in: history)?.open()
             } else {
                 T3.open(thread: id)
             }

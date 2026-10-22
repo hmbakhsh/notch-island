@@ -214,10 +214,49 @@ enum Slack {
         return nil
     }
 
+    /// The id of the Slack notification logged just before `date`, for
+    /// entries saved before ids were kept. Slack logs a notification about
+    /// 5–10s before macOS stores it and Island picks it up.
+    static func notificationID(near date: Date, team: String?) -> String? {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd/yy, HH:mm:ss:SSS"
+        var best: (id: String, gap: TimeInterval)?
+        for file in ["webapp-console.log", "webapp-console1.log", "webapp-console2.log"] {
+            guard let text = try? String(contentsOf: logs.appendingPathComponent(file), encoding: .utf8) else { continue }
+            for match in logged.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
+                guard let stamp = Range(match.range(at: 1), in: text).flatMap({ formatter.date(from: String(text[$0])) }),
+                      let id = Range(match.range(at: 2), in: text).map({ String(text[$0]) }),
+                      team.map({ id.hasPrefix($0) }) ?? true
+                else { continue }
+                let gap = date.timeIntervalSince(stamp)
+                guard gap > -1, gap < 20, gap < best?.gap ?? .infinity else { continue }
+                best = (id, gap)
+            }
+        }
+        return best?.id
+    }
+
+    /// "[10/22/26, 08:25:46:123] info: Store: NEW_NOTIFICATION { … "id": "T…_…""
+    private static let logged = try! NSRegularExpression(
+        pattern: #"\[(\d\d/\d\d/\d\d, [\d:]+)\] info: Store: NEW_NOTIFICATION \{(?:(?!\n\[)[\s\S])*?"id": "(T[A-Z0-9]+_\d+\.\d+)""#)
+
     private static func first(_ regex: NSRegularExpression, in text: String) -> String? {
         guard let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let range = Range(match.range(at: 1), in: text)
         else { return nil }
         return String(text[range])
+    }
+}
+
+extension Entry {
+    /// Opens the entry; a Slack one saved without its id is matched to Slack's
+    /// log by when it arrived, so it still opens its channel or thread.
+    func open() {
+        var m = message
+        if m.slackID == nil, m.mirroredFrom == "com.tinyspeck.slackmacgap" {
+            let team = m.open.flatMap { URLComponents(string: $0)?.queryItems?.first { $0.name == "team" }?.value }
+            m.slackID = Slack.notificationID(near: date, team: team)
+        }
+        m.perform()
     }
 }
