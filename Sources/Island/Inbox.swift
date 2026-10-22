@@ -123,7 +123,6 @@ struct WaitingThread: Codable, Identifiable, Hashable {
         m.icon = reason == "finished" ? "checkmark.circle.fill" : reason == "failed" ? "xmark.octagon.fill" : "questionmark.bubble.fill"
         m.color = reason == "finished" ? "green" : reason == "failed" ? "red" : "orange"
         m.open = T3.threadLink(id)?.absoluteString
-        m.seconds = 8
         if reason == "question" || reason == "approval" { m.sound = "Glass" }
         return m
     }

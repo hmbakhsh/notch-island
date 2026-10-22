@@ -7,7 +7,7 @@ import AppKit
 /// config, listing bundle ids such as "com.tinyspeck.slackmacgap".
 final class NotificationMirror {
     var onMessage: ((Message) -> Void)?
-    private let apps: [String]
+    private(set) var apps: [String]
     private var lastID: Int?
     private var timer: Timer?
     private var warned = false
@@ -18,6 +18,16 @@ final class NotificationMirror {
 
     init(apps: [String]) {
         self.apps = apps
+    }
+
+    /// Switches to another set of apps, from the settings window.
+    func setApps(_ apps: [String]) {
+        guard apps != self.apps else { return }
+        timer?.invalidate()
+        timer = nil
+        self.apps = apps
+        lastID = nil
+        start()
     }
 
     func start() {
@@ -115,7 +125,6 @@ final class NotificationMirror {
            id.hasPrefix("T"), let team = id.split(separator: "_").first {
             m.open = "slack://open?team=\(team)"
         }
-        m.seconds = 5
         m.mirroredFrom = app
         return m
     }

@@ -10,6 +10,7 @@ let homeName = Notification.Name("dev.notchisland.home")
 let agentsName = Notification.Name("dev.notchisland.agents")
 let devicePreviewName = Notification.Name("dev.notchisland.device-preview")
 let mirrorReplayName = Notification.Name("dev.notchisland.mirror-replay")
+let settingsName = Notification.Name("dev.notchisland.settings")
 
 struct Message: Codable {
     var title = ""
@@ -19,7 +20,7 @@ struct Message: Codable {
     var app: String?
     var image: String?
     var color: String?
-    /// nil → 5s, 0 → stays until clicked.
+    /// nil → the configured default (8s), 0 → stays until clicked.
     var seconds: Double?
     var open: String?
     var run: String?
@@ -30,6 +31,9 @@ struct Message: Codable {
     /// No icon: just the text, with the body tinted by `color`.
     var plain: Bool?
     var mergedCount: Int?
+    /// Seconds since 1970 of something about to start (a meeting): the banner
+    /// counts down to it above the body.
+    var countdown: Double?
 
     var tint: Color {
         let named: [String: Color] = [
@@ -161,6 +165,9 @@ enum Notify {
                 exit(0)
             case "--agents":
                 Agent.post(agentsName)
+                exit(0)
+            case "--settings":
+                Agent.post(settingsName)
                 exit(0)
             case "--replay-notification":
                 Agent.post(mirrorReplayName)

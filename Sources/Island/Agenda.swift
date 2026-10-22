@@ -103,8 +103,18 @@ final class Agenda: ObservableObject {
             .map(Self.makeEvent)
     }
 
-    private static let calendarConfigs = Dictionary(
-        (Config.shared.calendars ?? []).map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+    private static var calendarConfigs: [String: CalendarConfig] {
+        Dictionary((Config.shared.calendars ?? []).map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+    }
+
+    /// Every event calendar in Calendar.app, for the settings window.
+    var allCalendars: [(title: String, color: CGColor)] {
+        guard access == .granted else { return [] }
+        return store.calendars(for: .event)
+            .filter { $0.type != .birthday }
+            .map { ($0.title, $0.cgColor) }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
 
     private static func makeEvent(_ e: EKEvent) -> AgendaEvent {
         let link = joinLink(in: [e.url?.absoluteString, e.location, e.notes])
@@ -162,7 +172,7 @@ private extension EKEvent {
 ///     "capsLockTrigger": true }
 /// Without "calendars", every calendar except birthdays and subscriptions shows.
 /// "capsLockTrigger" makes Caps Lock open and close the island.
-struct Config: Decodable {
+struct Config: Codable {
     var calendars: [CalendarConfig]?
     var capsLockTrigger: Bool?
     /// Banners when T3 threads finish, fail or need you (default on).
@@ -174,20 +184,42 @@ struct Config: Decodable {
     var deviceAlerts: Bool?
     /// Sound for that: a system sound name ("Tink") or a path to an audio file.
     var deviceSound: String?
+    /// How long a banner stays, in seconds, unless it asks otherwise (default 8).
+    var bannerSeconds: Double?
+    /// A banner with a countdown before each meeting (default on).
+    var meetingReminders: Bool?
+    /// How many minutes before a meeting it shows (default 2).
+    var meetingLeadMinutes: Int?
+    /// How long the meeting banner stays, in seconds (default 30).
+    var meetingBannerSeconds: Double?
 
-    static let shared: Config = {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/notch-island/config.json")
+    var banner: Double { bannerSeconds ?? 8 }
+    var meetingLead: Int { meetingLeadMinutes ?? 2 }
+    var meetingBanner: Double { meetingBannerSeconds ?? 30 }
+
+    static let url = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".config/notch-island/config.json")
+
+    /// Read at launch; the settings window replaces it and saves.
+    static var shared: Config = {
         guard let data = try? Data(contentsOf: url),
               let config = try? JSONDecoder().decode(Config.self, from: data)
         else { return Config() }
         return config
     }()
+
+    func save() {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(self) else { return }
+        try? FileManager.default.createDirectory(at: Self.url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: Self.url, options: .atomic)
+    }
 }
 
 /// A calendar to show: just its name as in Calendar.app, or the name with a
 /// label and colour so events say which calendar they're from.
-struct CalendarConfig: Decodable {
+struct CalendarConfig: Codable {
     var name: String
     var label: String?
     var color: String?
@@ -201,6 +233,24 @@ struct CalendarConfig: Decodable {
         name = try c.decode(String.self, forKey: .name)
         label = try c.decodeIfPresent(String.self, forKey: .label)
         color = try c.decodeIfPresent(String.self, forKey: .color)
+    }
+
+    init(name: String, label: String? = nil, color: String? = nil) {
+        self.name = name
+        self.label = label
+        self.color = color
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard label != nil || color != nil else {
+            var c = encoder.singleValueContainer()
+            try c.encode(name)
+            return
+        }
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(label, forKey: .label)
+        try c.encodeIfPresent(color, forKey: .color)
     }
 
     private enum CodingKeys: String, CodingKey { case name, label, color }

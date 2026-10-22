@@ -18,8 +18,19 @@ inbox later.
 ## What it does
 
 **Messages from any program.** `notch` shows a banner with an icon, title, an
-optional second line and a small source label. Banners queue, hide after 5
-seconds, pause while hovered, and can open a URL or run a command when clicked.
+optional second line and a small source label. Banners queue, hide after 8
+seconds (change it in settings), pause while hovered, and can open a URL or run
+a command when clicked. With the Caps Lock trigger on, pressing Caps Lock on a
+banner pins it: **⏎** opens it, **Esc** dismisses it.
+
+**Meeting countdown.** A couple of minutes before each calendar event, a banner
+counts down to it ("Starts in 1:45"). Click it, or press Caps Lock then ⏎, to
+join the call (Meet, Zoom, Teams…) or open the event.
+
+**Settings.** `notch --settings`, Caps Lock then **,**, or opening Island.app
+again shows a settings window: banner time, meeting reminders, which apps'
+notifications to show, calendar labels and colours, and the Caps Lock trigger.
+Changes apply straight away and are saved to the config file.
 
 **Live agent status.** If T3 Code is installed, Island shows what your agents
 are doing as it happens. While any thread is working or waiting on you, the
@@ -132,12 +143,13 @@ Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Isla
 follows that too when it's a right-side modifier (built-in keyboards don't
 have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. While it's open
 from Caps Lock, **1** opens your calendar, **2** opens the agents list, and **3** plays or
-pauses Spotify, and **4** opens notifications; hold Caps Lock and press the number, or tap one then the other.
+pauses Spotify, **4** opens notifications, and **,** opens settings; hold Caps Lock and press the number, or tap one then the other.
 Both lists open with the first row highlighted: ↑ ↓ move, ⏎ opens it (the
 thread in T3, or the event's call, else the event in Calendar), so joining your
 next call is Caps Lock, 1, ⏎. The number and arrow keys are only taken while
 the island is open from the keyboard. **Esc** closes the
-overview or any panel (banners leave Esc to the app you're typing in). To use a different
+overview or any panel (banners leave Esc to the app you're typing in, unless
+you've pinned one with Caps Lock). To use a different
 key, bind `notch --home` in Raycast, skhd or similar instead.
 
 ## Sending messages

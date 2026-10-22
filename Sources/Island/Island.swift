@@ -15,7 +15,7 @@ final class IslandPanel: NSPanel {
 
 /// Owns the panel and decides what it shows: the Spotify player on request,
 /// otherwise queued messages one at a time.
-final class Island {
+final class Island: NSObject, NSApplicationDelegate {
     let player = Player()
     let history = History()
     let watcher = T3Watcher()
@@ -39,10 +39,16 @@ final class Island {
     private var homePinned = false
     /// The next panel was opened from the keyboard and should take ↑ ↓ ⏎.
     private var pendingListKeys = false
+    private var meetingTimer: Timer?
+    /// Meetings already announced, so each gets one reminder.
+    private var remindedMeetings = Set<String>()
+    private lazy var settings = SettingsWindow(agenda: agenda) { [weak self] in self?.applyConfig() }
+    private var capsInstalled = false
 
-    init() {
+    override init() {
         panel = IslandPanel(
             contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        super.init()
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
@@ -97,7 +103,6 @@ final class Island {
             self.close()
         }
         watcher.onNew = { [weak self] thread in self?.deliver(thread.message) }
-        watcher.announces = Config.shared.t3Banners != false
         watcher.onChange = { [weak self] in
             self?.updateBar()
             self?.updateLive()
@@ -105,14 +110,15 @@ final class Island {
         watcher.start()
         mirror.onMessage = { [weak self] message in self?.deliver(message) }
         mirror.start()
-        if Config.shared.deviceAlerts != false {
-            devices.onConnect = { [weak self] device in self?.showDevice(device) }
-            devices.onBattery = { [weak self] name, level in
-                guard self?.state.device?.name == name else { return }
-                self?.state.device?.battery = level
-            }
-            devices.start()
+        devices.onConnect = { [weak self] device in
+            guard Config.shared.deviceAlerts != false else { return }
+            self?.showDevice(device)
         }
+        devices.onBattery = { [weak self] name, level in
+            guard self?.state.device?.name == name else { return }
+            self?.state.device?.battery = level
+        }
+        devices.start()
         center.addObserver(forName: mirrorReplayName, object: nil, queue: .main) { [weak self] _ in
             self?.mirror.replayLatest()
         }
@@ -125,14 +131,80 @@ final class Island {
         center.addObserver(forName: agentsName, object: nil, queue: .main) { [weak self] _ in
             self?.toggle(.agents, keyboard: true)
         }
-        if Config.shared.capsLockTrigger == true {
-            Trigger.install { [weak self] in self?.toggle(.home) }
+        center.addObserver(forName: settingsName, object: nil, queue: .main) { [weak self] _ in
+            self?.openSettings()
+        }
+        applyConfig()
+        meetingTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            self?.checkMeetings()
         }
         hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.checkHover()
         }
         player.refresh()
         updateBar()
+    }
+
+    // MARK: Settings
+
+    /// Opening Island.app again (Finder, Spotlight) while it runs shows settings.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings()
+        return false
+    }
+
+    private func openSettings() {
+        if state.open { close() }
+        settings.show()
+    }
+
+    /// Applies the config to what's running; called at launch and on every
+    /// change in the settings window.
+    private func applyConfig() {
+        let config = Config.shared
+        watcher.announces = config.t3Banners != false
+        mirror.setApps(config.mirrorNotifications ?? [])
+        if config.capsLockTrigger == true, !capsInstalled {
+            capsInstalled = true
+            Trigger.install { [weak self] in self?.capsPressed() }
+        } else if config.capsLockTrigger != true, capsInstalled {
+            capsInstalled = false
+            Trigger.uninstall()
+        }
+        agenda.reloadIfAllowed()
+    }
+
+    // MARK: Meetings
+
+    /// A few minutes before each meeting: a banner counting down to it, which
+    /// joins the call (or opens the event) on click, or Caps then ⏎.
+    private func checkMeetings() {
+        let config = Config.shared
+        guard config.meetingReminders != false else { return }
+        agenda.reloadIfAllowed()
+        let now = Date()
+        for event in agenda.events where !remindedMeetings.contains(event.id) {
+            let left = event.start.timeIntervalSince(now)
+            guard left <= Double(config.meetingLead * 60) else { continue }
+            remindedMeetings.insert(event.id)
+            // Already well under way (e.g. Island just started): skip it.
+            guard left > -60 else { continue }
+            deliver(meetingMessage(event))
+        }
+    }
+
+    private func meetingMessage(_ event: AgendaEvent) -> Message {
+        var m = Message(title: event.title)
+        m.countdown = event.start.timeIntervalSince1970
+        m.body = [event.tag, event.detail].compactMap { $0 }.joined(separator: " · ")
+        if m.body?.isEmpty == true { m.body = nil }
+        m.icon = event.joinURL == nil ? "calendar" : "video.fill"
+        m.color = "green"
+        m.source = event.joinURL == nil ? "Calendar" : "Join"
+        m.open = event.openURL.absoluteString
+        m.seconds = Config.shared.meetingBanner
+        m.sound = "Glass"
+        return m
     }
 
     // MARK: Panels opened from the bar
@@ -258,7 +330,28 @@ final class Island {
         }
     }
 
-    /// 1: calendar. 2: agents. 3: play/pause. 4: notifications. Lists open with ↑ ↓ ⏎.
+    /// Caps Lock on a banner pins it and arms ⏎ (open) and Esc (dismiss);
+    /// pressed again it opens it. Otherwise it opens or closes the overview.
+    private func capsPressed() {
+        guard case .message = state.content, state.open else {
+            toggle(.home)
+            return
+        }
+        if state.armed {
+            tapMessage()
+            return
+        }
+        withAnimation(.easeOut(duration: 0.15)) { state.armed = true }
+        Trigger.captureEscape { [weak self] in self?.close() }
+        Trigger.captureList { [weak self] key in
+            if key == .open { self?.tapMessage() }
+        }
+        // Pinned, but not forever if it's ignored.
+        scheduleDismiss(after: 30)
+    }
+
+    /// 1: calendar. 2: agents. 3: play/pause. 4: notifications. ",": settings.
+    /// Lists open with ↑ ↓ ⏎.
     private func pressNumber(_ n: Int) {
         guard case .home = state.content, state.open else { return }
         switch n {
@@ -270,6 +363,8 @@ final class Island {
             player.send("playpause")
         case 4:
             toggle(.inbox, keyboard: true)
+        case 5:
+            openSettings()
         default:
             break
         }
@@ -391,7 +486,7 @@ final class Island {
         let message = queue.removeFirst()
         if let sound = message.sound { NSSound(named: sound == "default" ? "Glass" : sound)?.play() }
         present(.message(message))
-        scheduleDismiss(after: message.seconds ?? 5)
+        scheduleDismiss(after: message.seconds ?? Config.shared.banner)
     }
 
     private func scheduleDismiss(after seconds: Double) {
@@ -406,7 +501,7 @@ final class Island {
         guard case .message(let message) = state.content, state.open else { return }
         if inside {
             dismissTimer?.cancel()
-        } else if message.seconds != 0 {
+        } else if message.seconds != 0, !state.armed {
             scheduleDismiss(after: 2)
         }
     }
@@ -433,6 +528,7 @@ final class Island {
 
         state.notch = notch
         state.content = content
+        state.armed = false
         // Esc closes panels and the overview. Banners leave it alone: they
         // appear while you're typing, and Esc belongs to that app.
         if case .message = content {} else {
@@ -476,6 +572,7 @@ final class Island {
     private func close() {
         guard state.open else { return }
         releaseNumbers()
+        state.armed = false
         Trigger.captureEscape(nil)
         Trigger.captureList(nil)
         dismissTimer?.cancel()

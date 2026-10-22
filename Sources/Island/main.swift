@@ -17,6 +17,7 @@ let usage = """
            notch --calendar                                open/close upcoming calendar events
            notch --home                                    open/close the overview (bind it to any key)
            notch --agents                                  open/close the live list of T3 agents
+           notch --settings                                open the settings window
            notch --preview-device "AirPods Pro"            preview the headphones-connected animation
            notch --replay-notification                     show the latest mirrored (e.g. Slack) notification again
 
@@ -24,6 +25,8 @@ let usage = """
 
     Shows a message that drops out of the notch. Messages queue; each hides
     after a few seconds, pauses while hovered, and is dismissed on click.
+    With the Caps Lock trigger on, Caps pins the banner on screen: ⏎ opens it,
+    Esc dismisses it.
 
       -b, --body TEXT       second line, wraps to two lines
       -s, --source TEXT     small label top-right, e.g. "Claude · api"
@@ -31,7 +34,7 @@ let usage = """
       -a, --app NAME        use an app's icon instead, e.g. Claude, Slack
           --image PATH      use an image file instead
       -c, --color COLOR     icon tint: red orange yellow green mint teal blue indigo purple pink gray, or #RRGGBB
-      -t, --time SECONDS    how long it stays (default 5)
+      -t, --time SECONDS    how long it stays (default 8, set in settings)
           --sticky          stay until clicked
           --plain           no icon; the body is tinted with --color instead
       -o, --open URL|PATH   open this on click
@@ -76,4 +79,5 @@ if flock(lock, LOCK_EX | LOCK_NB) != 0 { exit(0) }
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let island = Island()
+app.delegate = island
 app.run()

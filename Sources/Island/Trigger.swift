@@ -31,6 +31,29 @@ enum Trigger {
         log("Caps Lock trigger registered, status \(status)")
     }
 
+    /// Gives Caps Lock back: drops the hot key and the F18 mappings.
+    static func uninstall() {
+        if let hotKey { UnregisterEventHotKey(hotKey) }
+        hotKey = nil
+        action = nil
+        let current = hidutil(["property", "--get", "UserKeyMapping"])
+        let pattern = #"Dst = (\d+);\s*HIDKeyboardModifierMappingSrc = (\d+);"#
+        let regex = try! NSRegularExpression(pattern: pattern)
+        let kept = regex.matches(in: current, range: NSRange(current.startIndex..., in: current)).compactMap {
+            match -> (UInt64, UInt64)? in
+            guard let dst = Range(match.range(at: 1), in: current).flatMap({ UInt64(current[$0]) }),
+                  let src = Range(match.range(at: 2), in: current).flatMap({ UInt64(current[$0]) }),
+                  dst != f18
+            else { return nil }
+            return (src, dst)
+        }
+        let json = kept
+            .map { #"{"HIDKeyboardModifierMappingSrc":\#($0.0),"HIDKeyboardModifierMappingDst":\#($0.1)}"# }
+            .joined(separator: ",")
+        _ = hidutil(["property", "--set", #"{"UserKeyMapping":[\#(json)]}"#])
+        log("Caps Lock trigger removed")
+    }
+
     /// One Carbon handler for every hot key Island registers.
     private static func installHandler() {
         guard !handlerInstalled else { return }
@@ -92,14 +115,14 @@ enum Trigger {
         RegisterEventHotKey(UInt32(kVK_Escape), 0, id, GetApplicationEventTarget(), 0, &escapeKey)
     }
 
-    /// Captures 1, 2 and 3 everywhere while the island is open from the
-    /// keyboard, and gives them back as soon as it closes.
+    /// Captures 1–4 and "," (settings) everywhere while the island is open
+    /// from the keyboard, and gives them back as soon as it closes.
     static func captureNumbers(_ handler: ((Int) -> Void)?) {
         numberKeys.forEach { UnregisterEventHotKey($0) }
         numberKeys = []
         numberAction = handler
         guard handler != nil else { return }
-        for (n, key) in [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4].enumerated() {
+        for (n, key) in [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_Comma].enumerated() {
             var ref: EventHotKeyRef?
             let id = EventHotKeyID(signature: signature, id: UInt32(11 + n))
             if RegisterEventHotKey(UInt32(key), 0, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {

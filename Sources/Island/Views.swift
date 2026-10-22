@@ -25,6 +25,7 @@ enum Content {
         switch self {
         case .player: return 168
         case .message(let m):
+            if m.countdown != nil { return 70 }
             if m.plain == true { return m.body == nil ? 42 : 56 }
             return m.body == nil ? 50 : 70
         case .inbox(let height), .calendar(let height), .agents(let height): return height
@@ -43,6 +44,8 @@ final class IslandState: ObservableObject {
     @Published var keyboard = false
     /// The row highlighted with the arrow keys (a thread or an event id).
     @Published var selected: String?
+    /// Caps Lock was pressed on a banner: it stays up and ⏎ opens it.
+    @Published var armed = false
     /// Agents working or waiting: shown as wings beside the notch while closed.
     @Published var live: LiveCounts?
     /// Headphones that just connected: take over the wings for a few seconds.
@@ -122,7 +125,7 @@ struct IslandView: View {
         case .player:
             PlayerView(player: player)
         case .message(let message):
-            MessageView(message: message)
+            MessageView(message: message, armed: state.armed)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onMessageTap)
                 .onHover(perform: onMessageHover)
@@ -142,6 +145,7 @@ struct IslandView: View {
 
 struct MessageView: View {
     let message: Message
+    var armed = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -153,14 +157,24 @@ struct MessageView: View {
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Spacer(minLength: 8)
-                    if let source = message.source {
+                    if armed {
+                        KeyHint()
+                    } else if let source = message.source {
                         Text(source)
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.white.opacity(0.4))
                             .lineLimit(1)
                     }
                 }
-                if let body = message.body {
+                if let start = message.countdown {
+                    Countdown(start: Date(timeIntervalSince1970: start), tint: message.tint)
+                    if let body = message.body {
+                        Text(body)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
+                } else if let body = message.body {
                     // A newline splits a one-line status from a one-line detail.
                     let lines = body.split(separator: "\n", maxSplits: 1).map(String.init)
                     if lines.count == 2 {
@@ -193,6 +207,43 @@ struct MessageView: View {
         .padding(.bottom, 10)
     }
 
+}
+
+/// "⏎ Open  esc": shown once Caps Lock has pinned a banner.
+struct KeyHint: View {
+    var body: some View {
+        HStack(spacing: 5) {
+            Text("⏎").font(.system(size: 10, weight: .bold)).foregroundStyle(.black)
+                .frame(minWidth: 16, minHeight: 15)
+                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(.white.opacity(0.85)))
+            Text("open").font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+            Text("esc").font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.7))
+                .padding(.horizontal, 3)
+                .frame(minHeight: 15)
+                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(.white.opacity(0.3)))
+        }
+        .transition(.opacity)
+    }
+}
+
+/// "Starts in 1:45", ticking; "Started 0:20 ago" once it has.
+struct Countdown: View {
+    let start: Date
+    let tint: Color
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let left = Int(start.timeIntervalSince(context.date).rounded())
+            Text(left > 0 ? "Starts in \(clock(left))" : left > -60 ? "Starting now" : "Started \(clock(-left)) ago")
+                .font(.system(size: 12.5, weight: .semibold).monospacedDigit())
+                .foregroundStyle(tint)
+                .lineLimit(1)
+        }
+    }
+
+    private func clock(_ s: Int) -> String {
+        s >= 3600 ? "\(s / 3600)h \(s % 3600 / 60)m" : String(format: "%d:%02d", s / 60, s % 60)
+    }
 }
 
 struct MessageIcon: View {

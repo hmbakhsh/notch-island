@@ -7,7 +7,7 @@ description: "Notify the user on their Mac with a banner that drops out of the s
 
 `notch` shows a short message in a black island that grows out of the MacBook
 notch (or the top centre of whichever screen the mouse is on). It is on PATH at
-`~/.local/bin/notch`. Messages queue, hide after 5 seconds, pause while hovered,
+`~/.local/bin/notch`. Messages queue, hide after 8 seconds (user-configurable), pause while hovered,
 and are dismissed on click.
 
 ## When to send one
