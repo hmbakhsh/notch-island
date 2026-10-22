@@ -26,6 +26,7 @@ enum Content {
         case .player: return 168
         case .message(let m):
             if m.countdown != nil { return 70 }
+            if m.copies == true { return 60 }
             if m.plain == true { return m.body == nil ? 42 : 56 }
             return m.body == nil ? 50 : 70
         case .inbox(let height), .calendar(let height), .agents(let height): return height
@@ -156,6 +157,33 @@ struct MessageView: View {
     var armed = false
 
     var body: some View {
+        if message.copies == true, let code = message.pill {
+            codeBody(code)
+        } else {
+            standardBody
+        }
+    }
+
+    /// A verification code, AutoFill-style: the code centred, "From Fountain" under it.
+    private func codeBody(_ code: String) -> some View {
+        VStack(spacing: 2) {
+            Text(code)
+                .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                .tracking(4)
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Text("From \(message.title)")
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(0.5))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 22)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
+    }
+
+    private var standardBody: some View {
         HStack(spacing: 12) {
             if message.plain != true { MessageIcon(message: message) }
             VStack(alignment: .leading, spacing: 2) {
