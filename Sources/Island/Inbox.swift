@@ -210,9 +210,11 @@ final class T3Watcher: ObservableObject {
           select thread_id, min(created_at) since
           from orchestration_v2_projection_runtime_requests where status = 'pending' group by thread_id)
         select t.thread_id id, t.title, coalesce(p.title, '') project,
+          -- A run also sits in 'waiting' while its subagents work; that's
+          -- working, not waiting for you.
           case when q.thread_id is not null then 'question'
-               when l.status = 'waiting' then 'approval'
                when l.status in ('queued', 'preparing', 'starting', 'running') or k.busy then 'running'
+               when l.status = 'waiting' then 'approval'
                when l.status = 'failed' then 'failed'
                else 'finished' end reason,
           coalesce(q.since,
