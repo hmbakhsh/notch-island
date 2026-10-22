@@ -207,7 +207,11 @@ enum Slack {
             guard let channel = first(channel, in: block) else { continue }
             let ts = first(message, in: block) ?? String(id.split(separator: "_").last ?? "")
             var link = "slack://channel?id=\(channel)&message=\(ts)&team=\(team)"
-            if let thread = first(thread, in: block) { link += "&thread_ts=\(thread)" }
+            // A reply opens its thread; a post in a channel opens as a thread
+            // too, so its replies show. DMs just jump to the message.
+            if let thread = first(thread, in: block) ?? (channel.hasPrefix("D") ? nil : ts) {
+                link += "&thread_ts=\(thread)"
+            }
             return URL(string: link)
         }
         log("slack: no channel found in Slack's logs for \(id)")

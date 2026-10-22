@@ -338,6 +338,14 @@ final class Island: NSObject, NSApplicationDelegate {
     /// Caps Lock on a banner pins it and arms ⏎ (open) and Esc (dismiss);
     /// pressed again it opens it. Otherwise it opens or closes the overview.
     private func capsPressed() {
+        // Opened by hovering: Caps takes it over for the keyboard rather than
+        // closing it, so a quick Caps then 4 doesn't type "4" into the app.
+        if case .home = state.content, state.open, !state.keyboard, Config.shared.capsLockTrigger == true {
+            homePinned = true
+            state.keyboard = true
+            Trigger.captureNumbers { [weak self] n in self?.pressNumber(n) }
+            return
+        }
         guard case .message = state.content, state.open else {
             toggle(.home)
             return
