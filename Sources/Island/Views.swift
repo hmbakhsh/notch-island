@@ -165,7 +165,7 @@ struct MessageView: View {
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Spacer(minLength: 8)
-                    if armed, message.code == nil {
+                    if armed, message.pill == nil {
                         KeyHint(action: message.open == nil && message.run != nil ? "copy" : "open")
                     } else if let source = message.source, message.mirroredFrom == nil {
                         // Mirrored banners skip it: the app's icon already says
@@ -211,20 +211,20 @@ struct MessageView: View {
                 }
             }
             Spacer(minLength: 0)
-            if let code = message.code {
+            if let pill = message.pill {
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(code)
+                    Text(pill)
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 3)
                         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.12)))
                     if armed {
-                        KeyHint(action: "copy")
-                    } else {
-                        Text("Click to copy")
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.4))
+                        KeyHint(action: message.copies == true ? "copy" : "open")
+                    } else if let note = message.note {
+                        Text(note)
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(message.copies == true ? .white.opacity(0.4) : message.tint)
                     }
                 }
                 .fixedSize()

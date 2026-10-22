@@ -63,7 +63,10 @@ final class EmailCodes {
         let address = address(of: mail.sender)
         var m = Message(title: service(of: address) ?? "Verification code")
         m.body = address ?? mail.subject
-        m.code = code
+        m.pill = code
+        m.note = "Click to copy"
+        m.copies = true
+        m.account = Self.address(of: mail.to)
         m.icon = "key.fill"
         m.color = "yellow"
         // "482 913" shows as sent but copies as "482913".
@@ -124,6 +127,7 @@ final class EmailCodes {
         let id: String
         let date: Date
         let sender: String
+        let to: String
         let subject: String
         let preview: String
     }
@@ -162,7 +166,7 @@ final class EmailCodes {
             var preview = "\(m["preview"] ?? "")"
             if let r = preview.range(of: "'body': ") { preview = String(preview[r.upperBound...]) }
             return Mail(
-                id: id, date: date, sender: m["sender"] as? String ?? "",
+                id: id, date: date, sender: m["sender"] as? String ?? "", to: m["to"] as? String ?? "",
                 subject: m["subject"] as? String ?? "", preview: preview)
         }
     }
@@ -190,5 +194,19 @@ final class EmailCodes {
             }
         }
         return nil
+    }
+}
+
+extension Message {
+    /// How it reads in the notifications list: a code leads with the code,
+    /// then the service and the address it was sent to, so a missed one can
+    /// still be used.
+    var listed: Message {
+        guard copies == true, let pill else { return self }
+        var m = self
+        m.title = pill
+        m.source = nil
+        m.body = [title, account].compactMap { $0 }.joined(separator: "\u{2003}")
+        return m
     }
 }

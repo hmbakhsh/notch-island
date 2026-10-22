@@ -312,7 +312,7 @@ struct NotificationGroup: Identifiable {
 
 extension Message {
     /// A banner about a T3 thread (finished, failed, needs you).
-    var fromAgent: Bool { open?.hasPrefix("t3code:") == true }
+    var fromAgent: Bool { open?.hasPrefix("t3code:") == true || source == "T3" }  // "T3": older entries
 }
 
 enum InboxLayout {
@@ -345,7 +345,7 @@ struct InboxView: View {
             ForEach(sections, id: \.title) { section in
                 SectionHeader(text: section.title)
                 ForEach(section.groups) { group in
-                    let message = group.latest.message
+                    let message = group.latest.message.listed
                     Row(
                         leading: AnyView(MessageIcon(message: message, size: 28)),
                         title: message.title,

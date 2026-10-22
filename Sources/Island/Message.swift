@@ -40,8 +40,14 @@ struct Message: Codable {
             "red": .red, "orange": .orange, "yellow": .yellow, "green": .green, "mint": .mint,
     /// A mirrored Slack notification's id ("T<team>_<ts>"), to find its channel.
     var slackID: String?
-    /// A verification code: shown large on the right; clicking copies it.
-    var code: String?
+    /// Large on the right in a pill: a verification code, an agent's run time.
+    var pill: String?
+    /// Under the pill: "Click to copy", "Done" (tinted with `color` unless it's a code).
+    var note: String?
+    /// The pill is a code to copy, so ⏎ says "copy".
+    var copies: Bool?
+    /// For a code: the address it was sent to.
+    var account: String?
             "teal": .teal, "cyan": .cyan, "blue": .blue, "indigo": .indigo, "purple": .purple,
             "pink": .pink, "gray": .gray, "grey": .gray, "white": .white,
         ]
