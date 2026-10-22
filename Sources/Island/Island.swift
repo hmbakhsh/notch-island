@@ -23,6 +23,7 @@ final class Island: NSObject, NSApplicationDelegate {
     let agenda = Agenda()
     let mirror = NotificationMirror(apps: Config.shared.mirrorNotifications ?? [])
     let devices = DeviceWatcher()
+    let codes = EmailCodes()
     let state = IslandState()
     let panel: IslandPanel
     private var queue: [Message] = []
@@ -111,6 +112,7 @@ final class Island: NSObject, NSApplicationDelegate {
         }
         watcher.start()
         mirror.onMessage = { [weak self] message in self?.deliver(message) }
+        codes.onCode = { [weak self] message in self?.deliver(message) }
         mirror.start()
         devices.onConnect = { [weak self] device in
             guard Config.shared.deviceAlerts != false else { return }
@@ -169,6 +171,7 @@ final class Island: NSObject, NSApplicationDelegate {
         let config = Config.shared
         watcher.announces = config.t3Banners != false
         mirror.setApps(config.mirrorNotifications ?? [])
+        codes.setEnabled(config.emailCodes != false)
         if config.capsLockTrigger == true, !capsInstalled {
             capsInstalled = true
             Trigger.install { [weak self] in self?.capsPressed() }

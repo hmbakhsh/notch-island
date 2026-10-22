@@ -166,7 +166,7 @@ struct MessageView: View {
                         .lineLimit(1)
                     Spacer(minLength: 8)
                     if armed {
-                        KeyHint()
+                        KeyHint(action: message.open == nil && message.run != nil ? "copy" : "open")
                     } else if let source = message.source, message.mirroredFrom == nil {
                         // Mirrored banners skip it: the app's icon already says
                         // where it's from, and the channel is the title.
@@ -221,12 +221,14 @@ struct MessageView: View {
 
 /// "⏎ open": shown once Caps Lock has pinned a banner (Esc still dismisses it).
 struct KeyHint: View {
+    var action = "open"
+
     var body: some View {
         HStack(spacing: 5) {
             Text("⏎").font(.system(size: 10, weight: .bold)).foregroundStyle(.black)
                 .frame(minWidth: 16, minHeight: 15)
                 .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(.white.opacity(0.85)))
-            Text("open").font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
+            Text(action).font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
         }
         .transition(.opacity)
     }

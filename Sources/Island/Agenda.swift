@@ -194,6 +194,8 @@ struct Config: Codable {
     var meetingBannerSeconds: Double?
     /// Most rows the notifications list shows (default 6).
     var notificationRows: Int?
+    /// Verification codes from Gmail as banners (default on when the Composio CLI is set up).
+    var emailCodes: Bool?
 
     var banner: Double { bannerSeconds ?? 8 }
     var meetingLead: Int { meetingLeadMinutes ?? 2 }
