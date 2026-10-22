@@ -40,6 +40,8 @@ struct Message: Codable {
             "red": .red, "orange": .orange, "yellow": .yellow, "green": .green, "mint": .mint,
     /// A mirrored Slack notification's id ("T<team>_<ts>"), to find its channel.
     var slackID: String?
+    /// A verification code: shown large on the right; clicking copies it.
+    var code: String?
             "teal": .teal, "cyan": .cyan, "blue": .blue, "indigo": .indigo, "purple": .purple,
             "pink": .pink, "gray": .gray, "grey": .gray, "white": .white,
         ]

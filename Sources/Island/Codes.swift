@@ -48,22 +48,74 @@ final class EmailCodes {
                   let code = Self.code(in: mail.subject + "\n" + mail.preview)
             else { continue }
             log("email code from \(mail.sender)")
-            onCode?(Self.message(code: code, mail: mail))
+            let message = Self.message(code: code, mail: mail)
+            // Show it with the service's icon if one can be had quickly.
+            Self.icon(for: Self.address(of: mail.sender)) { [weak self] path in
+                var m = message
+                if let path { m.image = path }
+                self?.onCode?(m)
+            }
         }
     }
 
+    /// "Fountain" / hello@fountain.fm, with the code large on the right.
     private static func message(code: String, mail: Mail) -> Message {
-        var m = Message(title: code)
-        let from = mail.sender.components(separatedBy: " <").first?.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")) ?? mail.sender
-        m.body = from.isEmpty ? mail.subject : from
+        let address = address(of: mail.sender)
+        var m = Message(title: service(of: address) ?? "Verification code")
+        m.body = address ?? mail.subject
+        m.code = code
         m.icon = "key.fill"
         m.color = "yellow"
-        m.source = "Copy"
         // "482 913" shows as sent but copies as "482913".
         let plain = code.filter { $0.isLetter || $0.isNumber }
         m.run = "printf %s '\(plain)' | /usr/bin/pbcopy"
         m.seconds = 30
         return m
+    }
+
+    /// "Fountain Podcasts <hello@fountain.fm>" → "hello@fountain.fm"
+    static func address(of sender: String) -> String? {
+        let raw = sender.components(separatedBy: "<").last?.trimmingCharacters(in: CharacterSet(charactersIn: "> \""))
+        return raw?.contains("@") == true ? raw : nil
+    }
+
+    /// The service behind an address: "no-reply@accounts.google.com" → "Google",
+    /// "hello@fountain.fm" → "Fountain".
+    static func service(of address: String?) -> String? {
+        guard let domain = address?.split(separator: "@").last?.lowercased() else { return nil }
+        var labels = domain.split(separator: ".").map(String.init)
+        // Drop the ending ("com", "co.uk") to get to the name.
+        if labels.count >= 3, ["co", "com", "org", "net", "ac", "gov"].contains(labels[labels.count - 2]) {
+            labels.removeLast(2)
+        } else if labels.count >= 2 {
+            labels.removeLast()
+        }
+        guard let name = labels.last, !name.isEmpty else { return nil }
+        return name.prefix(1).uppercased() + name.dropFirst()
+    }
+
+    /// The sender's site icon, cached under ~/.local/state/notch/icons. Calls
+    /// back on main with a file path, or nil after a couple of seconds.
+    private static func icon(for address: String?, _ done: @escaping (String?) -> Void) {
+        guard let domain = address?.split(separator: "@").last.map(String.init),
+              let url = URL(string: "https://icons.duckduckgo.com/ip3/\(domain).ico")
+        else { return done(nil) }
+        let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/state/notch/icons")
+        let file = dir.appendingPathComponent(domain + ".png")
+        if FileManager.default.fileExists(atPath: file.path) { return done(file.path) }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            var path: String?
+            if (response as? HTTPURLResponse)?.statusCode == 200, let data,
+               let image = NSImage(data: data), image.size.width >= 16,
+               let tiff = image.tiffRepresentation,
+               let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                if (try? png.write(to: file)) != nil { path = file.path }
+            }
+            DispatchQueue.main.async { done(path) }
+        }.resume()
     }
 
     // MARK: Gmail
