@@ -71,6 +71,8 @@ struct WaitingThread: Codable, Identifiable, Hashable {
     let visited: String
     let model: String
     let started: String
+    /// The project's folder, to name its git repo.
+    let root: String?
 
     var running: Bool { reason == "running" }
     var needsInput: Bool { reason == "question" || reason == "approval" }
@@ -121,7 +123,8 @@ struct WaitingThread: Codable, Identifiable, Hashable {
         m.source = project.isEmpty || project == "No project" ? nil : project
         m.plain = true
         // Banners show no icon; lists use this one.
-        m.icon = reason == "finished" ? "checkmark.circle.fill" : reason == "failed" ? "xmark.octagon.fill" : "questionmark.bubble.fill"
+        m.icon = reason == "finished" ? "checkmark.circle.fill" : reason == "failed" ? "xmark.circle.fill" : "exclamationmark.circle.fill"
+        m.repo = Repo.name(at: root) ?? ""
         m.color = reason == "finished" ? "green" : reason == "failed" ? "red" : "orange"
         m.open = T3.threadLink(id)?.absoluteString
         if reason == "question" || reason == "approval" { m.sound = "Glass" }
@@ -209,7 +212,7 @@ final class T3Watcher: ObservableObject {
         pending as (
           select thread_id, min(created_at) since
           from orchestration_v2_projection_runtime_requests where status = 'pending' group by thread_id)
-        select t.thread_id id, t.title, coalesce(p.title, '') project,
+        select t.thread_id id, t.title, coalesce(p.title, '') project, coalesce(p.workspace_root, '') root,
           -- A run also sits in 'waiting' while its subagents work; that's
           -- working, not waiting for you.
           case when q.thread_id is not null then 'question'
@@ -508,4 +511,37 @@ private func relative(_ date: Date) -> String {
     let f = DateFormatter()
     f.dateFormat = s < 7 * 86400 ? "EEE" : "d MMM"
     return f.string(from: date)
+}
+
+/// Names a project's git repo: the origin remote's name ("pulse_new"), or the
+/// repo folder's name without one. Cached; nil when the folder isn't a repo.
+enum Repo {
+    private static var cache: [String: String?] = [:]
+
+    static func name(at root: String?) -> String? {
+        guard let root, !root.isEmpty else { return nil }
+        if let hit = cache[root] { return hit }
+        var name: String?
+        if let top = git(["rev-parse", "--show-toplevel"], in: root) {
+            let remote = git(["remote", "get-url", "origin"], in: root)
+            let base = (remote ?? top).split(separator: "/").last.map(String.init) ?? ""
+            name = base.hasSuffix(".git") ? String(base.dropLast(4)) : base
+        }
+        cache[root] = name
+        return name
+    }
+
+    private static func git(_ args: [String], in dir: String) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", dir] + args
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let out = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return process.terminationStatus == 0 && !out.isEmpty ? out : nil
+    }
 }

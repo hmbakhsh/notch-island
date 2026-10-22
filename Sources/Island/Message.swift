@@ -34,10 +34,6 @@ struct Message: Codable {
     /// Seconds since 1970 of something about to start (a meeting): the banner
     /// counts down to it above the body.
     var countdown: Double?
-
-    var tint: Color {
-        let named: [String: Color] = [
-            "red": .red, "orange": .orange, "yellow": .yellow, "green": .green, "mint": .mint,
     /// A mirrored Slack notification's id ("T<team>_<ts>"), to find its channel.
     var slackID: String?
     /// Large on the right in a pill: a verification code, an agent's run time.
@@ -52,6 +48,12 @@ struct Message: Codable {
             "pink": .pink, "gray": .gray, "grey": .gray, "white": .white,
         ]
         guard let color = color?.lowercased() else { return .white }
+    /// For an agent: its git repo's name, "" when it isn't in one.
+    var repo: String?
+
+    var tint: Color {
+        let named: [String: Color] = [
+            "red": .red, "orange": .orange, "yellow": .yellow, "green": .green, "mint": .mint,
         if let c = named[color] { return c }
         let hex = color.hasPrefix("#") ? String(color.dropFirst()) : color
         guard hex.count == 6, let v = UInt32(hex, radix: 16) else { return .white }

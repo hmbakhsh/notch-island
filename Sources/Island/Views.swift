@@ -159,9 +159,51 @@ struct MessageView: View {
     var body: some View {
         if message.copies == true, let code = message.pill {
             codeBody(code)
+        } else if let repo = message.repo {
+            agentBody(repo: repo)
         } else {
             standardBody
         }
+    }
+
+    /// Pinned with Caps Lock: a faint ↩ on the right says ⏎ will open it.
+    @ViewBuilder private var returnHint: some View {
+        if armed {
+            Image(systemName: "return")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.35))
+                .transition(.opacity)
+        }
+    }
+
+    /// An agent, on one line: status symbol, thread name, then its repo.
+    private func agentBody(repo: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: message.icon ?? "checkmark.circle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(message.tint)
+            Text(message.title)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer(minLength: 10)
+            if repo.isEmpty {
+                Text("No repo")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.3))
+            } else {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.branch").font(.system(size: 10, weight: .semibold))
+                    Text(repo).font(.system(size: 12)).lineLimit(1)
+                }
+                .foregroundStyle(.white.opacity(0.5))
+                .fixedSize()
+            }
+            returnHint
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
     }
 
     /// A verification code, AutoFill-style: the code centred, "From Fountain" under it.
@@ -193,9 +235,7 @@ struct MessageView: View {
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Spacer(minLength: 8)
-                    if armed, message.pill == nil {
-                        KeyHint(action: message.open == nil && message.run != nil ? "copy" : "open")
-                    } else if let source = message.source, message.mirroredFrom == nil {
+                    if let source = message.source, message.mirroredFrom == nil, !armed {
                         // Mirrored banners skip it: the app's icon already says
                         // where it's from, and the channel is the title.
                         Text(source)
@@ -239,45 +279,13 @@ struct MessageView: View {
                 }
             }
             Spacer(minLength: 0)
-            if let pill = message.pill {
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(pill)
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 3)
-                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.12)))
-                    if armed {
-                        KeyHint(action: message.copies == true ? "copy" : "open")
-                    } else if let note = message.note {
-                        Text(note)
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundStyle(message.copies == true ? .white.opacity(0.4) : message.tint)
-                    }
-                }
-                .fixedSize()
-            }
+            returnHint
         }
         .padding(.horizontal, 22)
         .padding(.top, 2)
         .padding(.bottom, 10)
     }
 
-}
-
-/// "⏎ open": shown once Caps Lock has pinned a banner (Esc still dismisses it).
-struct KeyHint: View {
-    var action = "open"
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Text("⏎").font(.system(size: 10, weight: .bold)).foregroundStyle(.black)
-                .frame(minWidth: 16, minHeight: 15)
-                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(.white.opacity(0.85)))
-            Text(action).font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
-        }
-        .transition(.opacity)
-    }
 }
 
 /// "Starts in 1:45", ticking; "Started 0:20 ago" once it has.
