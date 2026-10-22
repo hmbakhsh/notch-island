@@ -181,15 +181,18 @@ private extension Data {
     }
 }
 
-/// Finds which channel a Slack notification came from. macOS doesn't store
-/// it, but Slack's own log does: each notification is logged as a
-/// NEW_NOTIFICATION block with the same id ("T<team>_<ts>") and the channel
-/// ("C…", or "D…" for DMs). The logs rotate at about 5 MB, so this works for
+/// Finds the message a Slack notification came from. macOS doesn't store
+/// where it was, but Slack's own log does: each notification is logged as a
+/// NEW_NOTIFICATION block with the same id ("T<team>_<ts>"), the channel
+/// ("C…", or "D…" for DMs) and, for replies, the thread. The link is the one
+/// Slack builds for its own notifications, so it opens the thread. The logs rotate at about 5 MB, so this works for
 /// roughly a day; after that the caller falls back to opening the workspace.
 enum Slack {
     private static let logs = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/Slack/logs/Default")
     private static let channel = try! NSRegularExpression(pattern: #""channel": "([CDG][A-Z0-9]+)""#)
+    private static let message = try! NSRegularExpression(pattern: #""msg": "(\d+\.\d+)""#)
+    private static let thread = try! NSRegularExpression(pattern: #""thread_ts": "(\d+\.\d+)""#)
 
     static func channelLink(notification id: String) -> URL? {
         guard let team = id.split(separator: "_").first, team.hasPrefix("T") else { return nil }
@@ -201,12 +204,20 @@ enum Slack {
             // The block runs until the next log line, which starts with "\n[".
             let end = text.range(of: "\n[", range: hit.upperBound..<text.endIndex)?.lowerBound ?? text.endIndex
             let block = String(text[start.lowerBound..<end])
-            guard let match = channel.firstMatch(in: block, range: NSRange(block.startIndex..., in: block)),
-                  let range = Range(match.range(at: 1), in: block)
-            else { continue }
-            return URL(string: "slack://channel?team=\(team)&id=\(block[range])")
+            guard let channel = first(channel, in: block) else { continue }
+            let ts = first(message, in: block) ?? String(id.split(separator: "_").last ?? "")
+            var link = "slack://channel?id=\(channel)&message=\(ts)&team=\(team)"
+            if let thread = first(thread, in: block) { link += "&thread_ts=\(thread)" }
+            return URL(string: link)
         }
         log("slack: no channel found in Slack's logs for \(id)")
         return nil
+    }
+
+    private static func first(_ regex: NSRegularExpression, in text: String) -> String? {
+        guard let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text)
+        else { return nil }
+        return String(text[range])
     }
 }
