@@ -31,7 +31,8 @@ final class History: ObservableObject {
         let entry = Entry(date: Date(), message: message)
         entries.insert(entry, at: 0)
         if entries.count > limit { entries.removeLast(entries.count - limit) }
-        unread += 1
+        // Agent updates live in the agents list; they don't count here.
+        if !message.fromAgent { unread += 1 }
         guard var line = try? encoder.encode(entry) else { return }
         line.append(0x0A)
         if let handle = try? FileHandle(forWritingTo: url) {
@@ -309,6 +310,11 @@ struct NotificationGroup: Identifiable {
     var id: String { latest.id.uuidString }
 }
 
+extension Message {
+    /// A banner about a T3 thread (finished, failed, needs you).
+    var fromAgent: Bool { open?.hasPrefix("t3code:") == true }
+}
+
 enum InboxLayout {
     static let rowHeight: CGFloat = 44
     static let maxPerApp = 4
@@ -365,6 +371,7 @@ struct InboxView: View {
         var other: [Entry] = []
         for entry in history.entries {
             let m = entry.message
+            if m.fromAgent { continue }  // the agents list shows these
             guard m.mirroredFrom != nil else {
                 if other.count < InboxLayout.maxOther { other.append(entry) }
                 continue
