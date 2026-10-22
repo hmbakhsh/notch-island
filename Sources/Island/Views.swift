@@ -219,7 +219,7 @@ struct MessageView: View {
 
 }
 
-/// "⏎ Open  esc": shown once Caps Lock has pinned a banner.
+/// "⏎ open": shown once Caps Lock has pinned a banner (Esc still dismisses it).
 struct KeyHint: View {
     var body: some View {
         HStack(spacing: 5) {
@@ -227,10 +227,6 @@ struct KeyHint: View {
                 .frame(minWidth: 16, minHeight: 15)
                 .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(.white.opacity(0.85)))
             Text("open").font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6))
-            Text("esc").font(.system(size: 9, weight: .bold)).foregroundStyle(.white.opacity(0.7))
-                .padding(.horizontal, 3)
-                .frame(minHeight: 15)
-                .background(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(.white.opacity(0.3)))
         }
         .transition(.opacity)
     }
