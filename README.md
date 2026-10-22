@@ -142,11 +142,11 @@ needs no Accessibility permission; other key remaps are kept. If you've set
 Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Island
 follows that too when it's a right-side modifier (built-in keyboards don't
 have those); otherwise set Caps Lock back to "⇪ Caps Lock" there. While it's open
-from Caps Lock, **1** opens your calendar, **2** opens the agents list, and **3** plays or
+from Caps Lock, **1** opens the agents list, **2** opens your calendar, and **3** plays or
 pauses Spotify, **4** opens notifications, and **,** opens settings; hold Caps Lock and press the number, or tap one then the other.
 Both lists open with the first row highlighted: ↑ ↓ move, ⏎ opens it (the
 thread in T3, or the event's call, else the event in Calendar), so joining your
-next call is Caps Lock, 1, ⏎. The number and arrow keys are only taken while
+next call is Caps Lock, 2, ⏎. The number and arrow keys are only taken while
 the island is open from the keyboard. **Esc** closes the
 overview or any panel (banners leave Esc to the app you're typing in, unless
 you've pinned one with Caps Lock). To use a different

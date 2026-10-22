@@ -355,15 +355,15 @@ final class Island: NSObject, NSApplicationDelegate {
         scheduleDismiss(after: 30)
     }
 
-    /// 1: calendar. 2: agents. 3: play/pause. 4: notifications. ",": settings.
+    /// 1: agents. 2: calendar. 3: play/pause. 4: notifications. ",": settings.
     /// Lists open with ↑ ↓ ⏎.
     private func pressNumber(_ n: Int) {
         guard case .home = state.content, state.open else { return }
         switch n {
         case 1:
-            toggle(.calendar, keyboard: true)
-        case 2:
             toggle(.agents, keyboard: true)
+        case 2:
+            toggle(.calendar, keyboard: true)
         case 3:
             player.send("playpause")
         case 4:
