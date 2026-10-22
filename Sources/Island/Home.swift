@@ -114,7 +114,7 @@ struct HomeView: View {
 
     @ViewBuilder private var spotify: some View {
         if player.running, !player.title.isEmpty {
-            HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 if let art = player.artwork {
                     Image(nsImage: art)
                         .resizable()
@@ -123,7 +123,9 @@ struct HomeView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    primary(player.title)
+                    // One line each: a long title cuts off rather than wrapping
+                    // and pushing the cover and button out of line.
+                    primary(player.title, lines: 1)
                     secondary(player.artist)
                 }
                 Spacer(minLength: 2)
