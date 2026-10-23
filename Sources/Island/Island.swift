@@ -46,6 +46,8 @@ final class Island: NSObject, NSApplicationDelegate {
     private var remindedMeetings = Set<String>()
     private lazy var settings = SettingsWindow(agenda: agenda) { [weak self] in self?.applyConfig() }
     private var capsInstalled = false
+    private var updateTimer: Timer?
+    private var updating = false
     private var subscriptions = Set<AnyCancellable>()
 
     override init() {
@@ -157,6 +159,7 @@ final class Island: NSObject, NSApplicationDelegate {
     /// Opening Island.app again (Finder, Spotlight) while it runs shows settings.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         openSettings()
+        checkForUpdate()
         return false
     }
 
@@ -457,6 +460,56 @@ final class Island: NSObject, NSApplicationDelegate {
             self?.closedByOutsideClickAt = Date()
             self?.close()
         }
+    }
+
+    // MARK: Updates
+
+    /// After launch: says if an update just landed or a migration failed, then
+    /// checks for updates now and every 6 hours.
+    func started(migrationError: String?) {
+        let updated = Install.justUpdated()
+        if let migrationError {
+            deliver(Message(title: "Island couldn't finish updating", body: migrationError,
+                            icon: "exclamationmark.triangle.fill", color: "orange", seconds: 0))
+        } else if let updated {
+            deliver(Message(title: "Updated to \(updated)", body: "Nothing to do on your end.",
+                            icon: "arrow.down.circle.fill", color: "green"))
+        }
+        checkForUpdate()
+        updateTimer = Timer.scheduledTimer(withTimeInterval: Updater.checkEvery, repeats: true) { [weak self] _ in
+            self?.checkForUpdate()
+        }
+    }
+
+    private func checkForUpdate() {
+        guard !updating else { return }
+        updating = true
+        Task {
+            guard let version = await Updater.newer() else {
+                DispatchQueue.main.async { self.updating = false }
+                return
+            }
+            DispatchQueue.main.async {
+                self.whenIdle {
+                    DispatchQueue.global().async {
+                        guard Updater.apply(version) else {
+                            DispatchQueue.main.async { self.updating = false }
+                            return
+                        }
+                        DispatchQueue.main.async { self.whenIdle { Install.restart() } }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Runs `work` once no banner, panel or settings window is up, so an update never lands mid-use.
+    private func whenIdle(_ work: @escaping () -> Void) {
+        guard !busy, queue.isEmpty, !state.open, !settings.visible else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in self?.whenIdle(work) }
+            return
+        }
+        work()
     }
 
     // MARK: Messages

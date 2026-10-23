@@ -196,6 +196,9 @@ enum Notify {
             case "--dismiss":
                 Agent.post(dismissName)
                 exit(0)
+            case "--version":
+                print(Install.version)
+                exit(0)
             case "-h", "--help":
                 print(usage)
                 exit(0)

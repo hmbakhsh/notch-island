@@ -20,6 +20,7 @@ let usage = """
            notch --settings                                open the settings window
            notch --preview-device "AirPods Pro"            preview the headphones-connected animation
            notch --replay-notification                     show the latest mirrored (e.g. Slack) notification again
+           notch --version                                 print the installed version
 
     History is kept in ~/.local/state/notch/history.jsonl (one JSON entry per line).
 
@@ -61,6 +62,13 @@ case "spotify":
 case "inbox":
     Agent.post(inboxName)
     exit(0)
+case "--migrate":
+    // install.sh runs this after copying the app in.
+    if let error = Install.migrate() { FileHandle.standardError.write(Data("\(error)\n".utf8)) }
+    exit(0)
+case "--version":
+    print(Install.version)
+    exit(0)
 case "-h", "--help":
     print(usage)
     exit(0)
@@ -75,9 +83,11 @@ let lockPath = (ProcessInfo.processInfo.environment["ISLAND_STATE_DIR"]
 try? FileManager.default.createDirectory(atPath: lockPath, withIntermediateDirectories: true)
 let lock = open((lockPath as NSString).appendingPathComponent("island.lock"), O_CREAT | O_RDWR, 0o644)
 if flock(lock, LOCK_EX | LOCK_NB) != 0 { exit(0) }
+let migrationError = Install.migrate()
 
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let island = Island()
 app.delegate = island
+island.started(migrationError: migrationError)
 app.run()
