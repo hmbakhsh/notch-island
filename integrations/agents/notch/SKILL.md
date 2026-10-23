@@ -76,5 +76,5 @@ the bar. T3 threads that finish or ask a question are announced automatically;
 don't send a separate `notch` just to say a T3 turn ended.
 
 If `notch` is not found, the machine isn't set up for it; skip the notification
-rather than failing the task (it is installed with notch-island's
-`just install`).
+rather than failing the task (it is installed with notch-island's install
+line, see its README).

@@ -1,12 +1,7 @@
 # just install     build Island.app into ~/Applications, link `notch`, start at login
 # just uninstall   undo all of that (keeps your history in ~/.local/state/notch)
 # just run         run a debug build in the foreground
-
-app_dir := env("APP_DIR", home_directory() / "Applications")
-bin_dir := env("BIN_DIR", home_directory() / ".local/bin")
-label := "dev.notchisland.island"
-agent := home_directory() / "Library/LaunchAgents" / label + ".plist"
-app := "build/Island.app"
+# Releases: ./release.sh X.Y.Z (CI builds it; see install.sh for installing one)
 
 default:
     @just --list
@@ -14,30 +9,15 @@ default:
 build:
     swift build -c release
 
-app: build
-    rm -rf {{app}}
-    mkdir -p {{app}}/Contents/MacOS
-    cp .build/release/Island {{app}}/Contents/MacOS/Island
-    cp Resources/Info.plist {{app}}/Contents/Info.plist
-    # Ad-hoc signed, but matched by bundle id rather than build hash, so macOS
-    # keeps the calendar and Spotify permissions across rebuilds.
-    codesign --force --sign - -r='designated => identifier "dev.notchisland.Island"' {{app}}
+# Source builds are versioned dev-…, so they never update themselves from releases.
+app:
+    VERSION="dev-$(git describe --tags --always --dirty)" ./scripts/build.sh
 
 install: app
-    -launchctl bootout gui/$(id -u)/{{label}} 2>/dev/null
-    -pkill -x Island
-    mkdir -p "{{app_dir}}" "{{bin_dir}}" "$(dirname '{{agent}}')"
-    rm -rf "{{app_dir}}/Island.app"
-    cp -R {{app}} "{{app_dir}}/Island.app"
-    ln -sf "{{app_dir}}/Island.app/Contents/MacOS/Island" "{{bin_dir}}/notch"
-    sed "s|@APP@|{{app_dir}}/Island.app|" Resources/launchagent.plist > "{{agent}}"
-    launchctl bootstrap gui/$(id -u) "{{agent}}"
-    @echo 'Installed. Try: notch "Hello" -b "from the notch" -i hand.wave.fill -c yellow'
+    FROM=build/Island.app ./install.sh
 
 uninstall:
-    -launchctl bootout gui/$(id -u)/{{label}} 2>/dev/null
-    -pkill -x Island
-    rm -rf "{{app_dir}}/Island.app" "{{agent}}" "{{bin_dir}}/notch"
+    ./install.sh --uninstall
 
 run:
     swift run Island

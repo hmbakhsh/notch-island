@@ -103,17 +103,30 @@ of the top edge. It appears on whichever screen the mouse is on.
 
 ## Install
 
-Needs macOS 14 or later, Swift 5.9+ (Xcode or the Command Line Tools) and [just](https://github.com/casey/just) (`brew install just`).
+Needs macOS 14 or later.
 
 ```sh
-git clone https://github.com/hmbakhsh/notch-island
-cd notch-island
-just install
+curl -fsSL https://github.com/hmbakhsh/notch-island/releases/latest/download/install.sh | bash
 ```
 
-This builds `Island.app` into `~/Applications`, links the `notch` CLI into
+This puts `Island.app` in `~/Applications`, links the `notch` CLI into
 `~/.local/bin` (put that on your `PATH`), and adds a login item so Island runs
-in the background. `just uninstall` removes all three.
+in the background.
+
+**Update:** automatic. Island checks every 6 hours and updates while the
+island is closed. To update by hand, run the install line again
+(`VERSION=0.1.0` in front of `bash` installs a specific release).
+**Uninstall:** run the install line with `bash -s -- --uninstall` instead of `bash`.
+History and settings stay in `~/.local/state/notch` and `~/.config/notch-island`.
+
+Built it from source before 0.1.0? Run the install line once; from then on it
+updates itself.
+
+To build from source instead, with Swift 5.9+ (Xcode or the Command Line Tools)
+and [just](https://github.com/casey/just): `git clone https://github.com/hmbakhsh/notch-island`,
+then `just install` in it (`just uninstall` removes it). Source builds don't
+update themselves; pull and run `just install` again, or switch to releases with
+the install line.
 
 The first time the Spotify or calendar panel is used, macOS asks for
 permission to control Spotify or read your calendars.
@@ -136,7 +149,7 @@ easy to tell apart. Without `calendars`, every calendar except birthdays and
 subscribed ones is shown.
 
 To open the overview with **Caps Lock**, add `"capsLockTrigger": true` to the
-same file and restart Island (`just install`). Island remaps Caps Lock to F18
+same file and restart Island (or turn it on in settings). Island remaps Caps Lock to F18
 (a key Mac keyboards don't have) with `hidutil` and listens for that, so it
 needs no Accessibility permission; other key remaps are kept. If you've set
 Caps Lock to another key in System Settings → Keyboard → Modifier Keys, Island

@@ -1,0 +1,18 @@
+# Push a tag like v0.2.0 to build Island and publish it as the latest release.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: VERSION="${GITHUB_REF_NAME#v}" UNIVERSAL=1 ./scripts/build.sh
+      - run: |
+          gh release create "$GITHUB_REF_NAME" build/Island.zip install.sh --generate-notes --notes \
+            "Updates install on their own. To update by hand, or if you built Island from source before 0.1.0, run: \`curl -fsSL https://github.com/$GITHUB_REPOSITORY/releases/latest/download/install.sh | bash\`"
+        env:
+          GH_TOKEN: ${{ github.token }}
