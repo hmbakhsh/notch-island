@@ -12,6 +12,8 @@ final class SettingsWindow {
         model = SettingsModel(agenda: agenda, onChange: onChange)
     }
 
+    var visible: Bool { window?.isVisible == true }
+
     func show() {
         model.config = Config.shared
         model.agenda.reloadIfAllowed()
