@@ -147,6 +147,14 @@ final class Island: NSObject, NSApplicationDelegate {
         hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.checkHover()
         }
+        // Closing or opening the lid, or plugging a display, moves the notch
+        // screen and the whole coordinate space: re-park the island on it.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.screensChanged() }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.screensChanged() }
         player.$playing.removeDuplicates().receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updateLive() }
             .store(in: &subscriptions)
@@ -687,6 +695,18 @@ final class Island: NSObject, NSApplicationDelegate {
     }
 
     private var wingsVisible: Bool { state.live != nil || state.device != nil || state.music }
+
+    /// Screens changed. An open island closes (close() re-parks the wings);
+    /// parked wings move now, and again once the displays have settled.
+    private func screensChanged() {
+        if state.open { close(); return }
+        guard !busy, wingsVisible else { return }
+        showLive()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self, !self.busy, !self.state.open, self.wingsVisible else { return }
+            self.showLive()
+        }
+    }
 
     private func hideWingsIfIdle() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35 * slowmo) { [weak self] in
