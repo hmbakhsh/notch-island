@@ -29,7 +29,9 @@ final class DeviceWatcher: NSObject {
         let headphones = device.deviceClassMajor == BluetoothDeviceClassMajor(kBluetoothDeviceClassMajorAudio)
             || name.localizedCaseInsensitiveContains("airpods") || name.localizedCaseInsensitiveContains("beats")
         guard headphones else { return }
-        onConnect?(ConnectedDevice(name: name, symbol: Self.symbol(for: name), battery: nil))
+        // IOBluetooth can call this off the main thread; onConnect changes SwiftUI state.
+        let connectedDevice = ConnectedDevice(name: name, symbol: Self.symbol(for: name), battery: nil)
+        DispatchQueue.main.async { self.onConnect?(connectedDevice) }
 
         // AirPods report battery a moment after connecting.
         for delay in [1.0, 3.0] {
