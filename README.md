@@ -109,6 +109,13 @@ Needs macOS 14 or later.
 curl -fsSL https://github.com/hmbakhsh/notch-island/releases/latest/download/install.sh | bash
 ```
 
+Or with Homebrew:
+
+```sh
+brew install --cask hmbakhsh/tap/notch-island
+open -a Island
+```
+
 This puts `Island.app` in `~/Applications`, links the `notch` CLI into
 `~/.local/bin` (put that on your `PATH`), and adds a login item so Island runs
 in the background.
