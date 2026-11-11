@@ -103,21 +103,39 @@ of the top edge. It appears on whichever screen the mouse is on.
 
 ## Install
 
-Needs macOS 14 or later.
+Needs macOS 14 or later. Install with the script or with Homebrew; both add a
+login item so Island runs in the background.
+
+**Script:**
 
 ```sh
 curl -fsSL https://github.com/hmbakhsh/notch-island/releases/latest/download/install.sh | bash
 ```
 
-This puts `Island.app` in `~/Applications`, links the `notch` CLI into
-`~/.local/bin` (put that on your `PATH`), and adds a login item so Island runs
-in the background.
+This puts `Island.app` in `~/Applications` and links the `notch` CLI into
+`~/.local/bin` (put that on your `PATH`).
+
+**Homebrew:**
+
+```sh
+brew trust --cask hmbakhsh/tap/notch-island   # once; Homebrew asks before loading third-party casks
+brew install --cask hmbakhsh/tap/notch-island
+open -a Island                                # first start adds the login item
+```
+
+This puts `Island.app` in `/Applications` and links `notch` into Homebrew's `bin`.
+Switching from the script install is safe: on first start Island moves the old
+copy to the Trash and points the login item and `~/.local/bin/notch` at the new one.
 
 **Update:** automatic. Island checks every 6 hours and updates while the
-island is closed. To update by hand, run the install line again
-(`VERSION=0.1.0` in front of `bash` installs a specific release).
-**Uninstall:** run the install line with `bash -s -- --uninstall` instead of `bash`.
-History and settings stay in `~/.local/state/notch` and `~/.config/notch-island`.
+island is closed, through Homebrew if that's how it was installed. To update by
+hand, run the install line again (`VERSION=0.1.0` in front of `bash` installs a
+specific release), or `brew upgrade --cask notch-island`.
+
+**Uninstall:** run the install line with `bash -s -- --uninstall` instead of
+`bash`, or `brew uninstall --cask notch-island`. Either way, history and
+settings stay in `~/.local/state/notch` and `~/.config/notch-island`;
+`brew uninstall --zap --cask notch-island` deletes them too.
 
 Built it from source before 0.1.0? Run the install line once; from then on it
 updates itself.
